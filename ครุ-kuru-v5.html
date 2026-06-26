@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบฝึกฝนและทดสอบปากเปล่าศัพท์อาหรับ 50 คำ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'sans-serif'],
+                        arabic: ['Amiri', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Mnemonic Color Classes */
+        .color-thai { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+        .color-past { background-color: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+        .color-present { background-color: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+        .color-masdar { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
+
+        /* Arabic typography: ให้ที่ว่างพอสำหรับสระบน-ล่าง ไม่ให้ทับกัน */
+        .font-arabic { line-height: 2.3 !important; }
+        .ar-word { line-height: 2.4; padding: 0.25em 0; display: inline-block; }
+
+        /* รากศัพท์ = แดงหนา */
+        .rootc { color: #dc2626; font-weight: 800; }
+        /* สีสระ (ฮะเราะกาต) ช่วยจำรูปสระแต่ละตัว */
+        .hk-fat { color: #2563eb; }   /* ฟัตฮะฮ์  ـَ  ฟ้า */
+        .hk-kas { color: #16a34a; }   /* กัสเราะฮ์ ـِ  เขียว */
+        .hk-dam { color: #ea580c; }   /* ฎ็อมมะฮ์ ـُ  ส้ม */
+        .hk-suk { color: #64748b; }   /* สุกูน    ـْ  เทา */
+        .hk-shd { color: #9333ea; }   /* ชัดดะฮ์  ـّ  ม่วง */
+        .hk-tan { color: #db2777; }   /* ตันวีน  ـً ـٌ ـٍ  ชมพู */
+
+        /* legend chip */
+        .legend-chip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; }
+        .legend-dot { width:9px; height:9px; border-radius:9px; display:inline-block; }
+
+        /* Card Flip Animation Styles */
+        .perspective { perspective: 1000px; }
+        .card-flip-inner { transition: transform 0.5s ease; transform-style: preserve-3d; }
+        .card-flipped { transform: rotateY(180deg); }
+        .card-face { backface-visibility: hidden; }
+        .card-back { transform: rotateY(180deg); }
+
+        /* ===== ปุ่มลอย + แผงควบคุมการลงสี (quiet luxury) ===== */
+        #color-fab {
+            position: fixed; right: 18px; bottom: 18px; z-index: 60;
+            width: 54px; height: 54px; border-radius: 18px;
+            background: linear-gradient(135deg,#1e1b4b,#312e81);
+            color: #fff; box-shadow: 0 10px 30px -8px rgba(49,46,129,.55), 0 2px 8px rgba(0,0,0,.15);
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(255,255,255,.12); cursor: pointer;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        #color-fab:hover { transform: translateY(-2px) scale(1.03); }
+        #color-fab:active { transform: scale(.96); }
+        #color-fab .fab-dot { position:absolute; top:9px; right:9px; width:8px; height:8px; border-radius:8px; background:#f43f5e; box-shadow:0 0 0 2px #312e81; opacity:0; transition:opacity .2s; }
+        #color-fab.is-bw .fab-dot { opacity:1; }
+
+        #color-sheet-backdrop { position: fixed; inset: 0; z-index: 65; background: rgba(15,23,42,.45); backdrop-filter: blur(2px); opacity:0; pointer-events:none; transition: opacity .25s ease; }
+        #color-sheet-backdrop.open { opacity:1; pointer-events:auto; }
+        #color-sheet {
+            position: fixed; z-index: 66; right: 16px; bottom: 84px; width: 340px; max-width: calc(100vw - 32px);
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 22px;
+            box-shadow: 0 24px 60px -12px rgba(30,27,75,.4); padding: 18px;
+            transform: translateY(12px) scale(.98); opacity: 0; pointer-events: none;
+            transition: transform .25s cubic-bezier(.16,1,.3,1), opacity .2s ease;
+            max-height: calc(100vh - 110px); overflow-y: auto;
+        }
+        #color-sheet.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        @media (max-width: 520px){
+            #color-sheet { right: 8px; left: 8px; width: auto; bottom: 80px; border-radius: 22px; }
+        }
+
+        /* toggle switch */
+        .sw { position: relative; display: inline-block; width: 40px; height: 23px; flex: none; }
+        .sw input { opacity: 0; width: 0; height: 0; }
+        .sw .track { position:absolute; inset:0; background:#e2e8f0; border-radius:999px; transition:.22s; }
+        .sw .thumb { position:absolute; top:3px; left:3px; width:17px; height:17px; background:#fff; border-radius:999px; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:.22s; }
+        .sw input:checked + .track { background:#4f46e5; }
+        .sw input:checked + .track + .thumb { transform: translateX(17px); }
+        .sw.dot-fat input:checked + .track { background:#2563eb; }
+        .sw.dot-kas input:checked + .track { background:#16a34a; }
+        .sw.dot-dam input:checked + .track { background:#ea580c; }
+        .sw.dot-suk input:checked + .track { background:#64748b; }
+        .sw.dot-shd input:checked + .track { background:#9333ea; }
+        .sw.dot-tan input:checked + .track { background:#db2777; }
+        .sw.dot-root input:checked + .track { background:#dc2626; }
+        .ctl-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 2px; }
+        .ctl-row.disabled { opacity:.4; pointer-events:none; }
+        .ctl-label { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#334155; }
+        .ctl-swatch { width:12px; height:12px; border-radius:5px; flex:none; border:1px solid rgba(0,0,0,.08); }
+
+        /* group header row in table */
+        .group-row td { background: linear-gradient(90deg,#eef2ff,#f8fafc); border-top:2px solid #c7d2fe; }
+        .group-pill { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#3730a3; }
+        .group-count { font-size:10px; font-weight:800; color:#6366f1; background:#fff; border:1px solid #e0e7ff; padding:1px 7px; border-radius:999px; }
+
+        /* segmented view control */
+        .seg { display:inline-flex; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; padding:3px; gap:2px; flex-wrap:wrap; }
+        .seg button { font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:9px; color:#64748b; transition:.15s; white-space:nowrap; }
+        .seg button.active { background:#4f46e5; color:#fff; box-shadow:0 2px 6px -1px rgba(79,70,229,.45); }
+        .seg button:not(.active):hover { color:#1e293b; background:#fff; }
+
+        .legend-chip.off { opacity:.28; filter: grayscale(.4); }
+
+        /* ===== SRS / แฟลชการ์ด-ทบทวน + สถิติ ===== */
+        .mchip { font-size:11px; font-weight:800; padding:5px 9px; border-radius:9px; border:1px solid #e2e8f0; background:#fff; color:#475569; transition:.15s; white-space:nowrap; }
+        .mchip:hover { background:#f8fafc; }
+        .mchip.on { background:#4f46e5; color:#fff; border-color:#4f46e5; box-shadow:0 2px 6px -1px rgba(79,70,229,.4); }
+        .mchip .mc-sub { font-size:9px; opacity:.7; font-weight:700; margin-left:3px; }
+        .gbtn { flex:1; padding:11px 8px; border-radius:14px; font-weight:800; font-size:13px; transition:.15s; display:flex; flex-direction:column; align-items:center; gap:1px; border:1.5px solid transparent; }
+        .gbtn .gsub { font-size:9.5px; font-weight:700; opacity:.8; }
+        .gbtn-again { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+        .gbtn-again:hover { background:#fee2e2; }
+        .gbtn-good { background:#eef2ff; color:#4f46e5; border-color:#c7d2fe; }
+        .gbtn-good:hover { background:#e0e7ff; }
+        .gbtn-easy { background:#ecfdf5; color:#059669; border-color:#a7f3d0; }
+        .gbtn-easy:hover { background:#d1fae5; }
+        .stat-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+        .stat-tbl th, .stat-tbl td { padding:8px 10px; text-align:center; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+        .stat-tbl th { font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.04em; background:#f8fafc; position:sticky; top:0; }
+        .stat-tbl td:first-child, .stat-tbl th:first-child { text-align:left; font-weight:700; color:#1e293b; }
+        .stat-tbl tr:hover td { background:#fafcff; }
+        .stat-tbl .barcell { min-width:120px; }
+        .accbar { height:7px; border-radius:999px; background:#f1f5f9; overflow:hidden; }
+        .accbar > span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#6366f1,#22c55e); }
+        .box-badge { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; }
+        .pill-due { background:#fef3c7; color:#b45309; }
+        .pill-new { background:#f1f5f9; color:#64748b; }
+        .pill-learn { background:#e0e7ff; color:#4338ca; }
+        .pill-mast { background:#dcfce7; color:#15803d; }
+        .srs-dots { display:inline-flex; gap:2px; }
+        .srs-dots i { width:7px; height:7px; border-radius:999px; background:#e2e8f0; }
+        .srs-dots i.fill { background:#4f46e5; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-full flex flex-col">
+
+    <!-- ===== ปุ่มลอย + แผงควบคุมการลงสี (ใช้ได้ทุกแท็บ จำค่าที่ตั้งไว้) ===== -->
+    <button id="color-fab" onclick="toggleColorSheet()" aria-label="ตั้งค่าการลงสี" title="ตั้งค่าการลงสีช่วยจำ">
+        <i data-lucide="palette" class="w-6 h-6"></i>
+        <span class="fab-dot"></span>
+    </button>
+    <div id="color-sheet-backdrop" onclick="toggleColorSheet(false)"></div>
+    <div id="color-sheet" role="dialog" aria-label="แผงควบคุมการลงสี">
+        <div class="flex items-center justify-between mb-1">
+            <div>
+                <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                    <i data-lucide="palette" class="w-4 h-4 text-indigo-600"></i> การลงสีช่วยจำ
+                </h3>
+                <p class="text-[11px] text-slate-400">เลือกว่าจะโชว์สีอะไรบ้าง • ใช้ได้ทุกแท็บ</p>
+            </div>
+            <button onclick="toggleColorSheet(false)" class="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <!-- โหมดขาวดำล้วน -->
+        <div class="ctl-row rounded-xl bg-slate-50 border border-slate-200 px-3 mt-2">
+            <span class="ctl-label"><i data-lucide="contrast" class="w-3.5 h-3.5 text-slate-500"></i> โหมดขาวดำล้วน <span class="text-[10px] font-bold text-slate-400">(ทดสอบความจำ)</span></span>
+            <label class="sw"><input type="checkbox" id="sw-bw" onchange="onBwToggle(this.checked)"><span class="track"></span><span class="thumb"></span></label>
+        </div>
+
+        <div id="color-detail-group" class="mt-1.5">
+            <!-- รากศัพท์ -->
+            <div class="ctl-row border-b border-slate-100">
+                <span class="ctl-label"><span class="ctl-swatch" style="background:#dc2626"></span> สีรากศัพท์ (แดงหนา)</span>
+                <label class="sw dot-root"><input type="checkbox" id="sw-root" onchange="setColorPref('root',this.checked)"><span class="track"></span><span class="thumb"></span></label>
+            </div>
+
+            <!-- สีสระทั้งหมด -->
+            <div class="ctl-row">
+                <span class="ctl-label"><i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-500"></i> สีสระทั้งหมด (ฮะเราะกาต)</span>
+                <label class="sw"><input type="checkbox" id="sw-vowel-all" onchange="setAllVowels(this.checked)"><span class="track"></span><span class="thumb"></span></label>
+            </div>
+
+            <!-- รายชนิดสระ -->
+            <div class="pl-2 ml-1 border-l-2 border-slate-100">
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#2563eb"></span> ฟัตฮะฮ์ <span class="font-arabic text-base">َ</span></span>
+                    <label class="sw dot-fat"><input type="checkbox" id="sw-fat" onchange="setColorPref('fat',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#16a34a"></span> กัสเราะฮ์ <span class="font-arabic text-base">ِ</span></span>
+                    <label class="sw dot-kas"><input type="checkbox" id="sw-kas" onchange="setColorPref('kas',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#ea580c"></span> ฎ็อมมะฮ์ <span class="font-arabic text-base">ُ</span></span>
+                    <label class="sw dot-dam"><input type="checkbox" id="sw-dam" onchange="setColorPref('dam',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#64748b"></span> สุกูน <span class="font-arabic text-base">ْ</span></span>
+                    <label class="sw dot-suk"><input type="checkbox" id="sw-suk" onchange="setColorPref('suk',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#9333ea"></span> ชัดดะฮ์ <span class="font-arabic text-base">ّ</span></span>
+                    <label class="sw dot-shd"><input type="checkbox" id="sw-shd" onchange="setColorPref('shd',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+                <div class="ctl-row"><span class="ctl-label"><span class="ctl-swatch" style="background:#db2777"></span> ตันวีน <span class="font-arabic text-base">ٌ ٍ ً</span></span>
+                    <label class="sw dot-tan"><input type="checkbox" id="sw-tan" onchange="setColorPref('tan',this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+            <button onclick="resetColorPrefs()" class="flex-1 py-2 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> ค่าเริ่มต้น</button>
+            <button onclick="colorPreset('rootonly')" class="flex-1 py-2 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">เฉพาะราก</button>
+            <button onclick="colorPreset('vowelonly')" class="flex-1 py-2 text-[11px] font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">เฉพาะสระ</button>
+        </div>
+    </div>
+
+    <!-- Header Area -->
+    <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-red-500 to-indigo-600 text-white p-2.5 rounded-xl shadow-lg">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-wide">ระบบจำลองสอบปากเปล่าสี่สถานะ</h1>
+                    <p class="text-xs text-indigo-200">แก้ไขตัวอักษรหายสี่เหลี่ยม • สำเนียงช้าชัดเน้นสระตามหลักฟัตฮุลเราะห์มาน</p>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="flex bg-slate-800/85 p-1 rounded-xl border border-slate-700 shadow-inner">
+                <button onclick="switchTab('learn')" id="tab-learn" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 bg-indigo-600 text-white shadow-md">
+                    <i data-lucide="list" class="w-4 h-4"></i> ตารางศัพท์
+                </button>
+                <button onclick="switchTab('flashcard')" id="tab-flashcard" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i data-lucide="layers" class="w-4 h-4"></i> แฟลชการ์ดฝึกจำ
+                </button>
+                <button onclick="switchTab('exam'); startExamSmart();" id="tab-exam" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i data-lucide="mic" class="w-4 h-4"></i> ห้องสอบปากเปล่า
+                </button>
+                <button onclick="switchTab('stats')" id="tab-stats" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> สถิติ
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+
+        <!-- ==================== TAB 1: LEARN TABLE ==================== -->
+        <section id="page-learn" class="space-y-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-md font-bold text-slate-800">ระบบลงสีช่วยจำ: รากศัพท์ + สีสระ (ฮะเราะกาต)</h2>
+                    <p class="text-xs text-slate-500"><span class="text-red-600 font-black">แดงหนา</span> = อักษรรากศัพท์แท้ • สระแต่ละชนิดมีสีของตัวเอง เพื่อช่วยจำรูปสระให้แม่น</p>
+                    <div class="mt-2" id="learn-legend"></div>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold">
+                    <span class="px-3 py-1.5 rounded-lg border color-thai">ไทย</span>
+                    <span class="px-3 py-1.5 rounded-lg border color-past">อดีต (มาฎี)</span>
+                    <span class="px-3 py-1.5 rounded-lg border color-present">ปัจจุบัน (มุฎอเรี๊ยะอ์)</span>
+                    <span class="px-3 py-1.5 rounded-lg border color-masdar">มัศดัร</span>
+                </div>
+            </div>
+
+            <!-- Practice-set selector: เลือกคำที่จะฝึก (แบ่งตามเดือน เดือนละ 50 คำ) -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                            <i data-lucide="list-checks" class="w-4 h-4 text-indigo-600"></i> เลือกคำที่จะฝึก — แบ่งตามเดือน (เดือนละ 50 คำ)
+                        </h3>
+                        <p class="text-xs text-slate-500">เลือกเดือนที่จะดู ติ๊กคำที่อยากฝึก/ทวน คำที่สอบผ่านแล้วก็เอาออกได้ — แฟลชการ์ดและห้องสอบจะดึงเฉพาะคำที่เลือกไว้</p>
+                    </div>
+                    <span class="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl whitespace-nowrap" id="selected-count-badge">เลือกฝึก 0 คำ</span>
+                </div>
+
+                <!-- แถบเลือกเดือน -->
+                <div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">เดือน / บท</div>
+                    <div id="month-chip-bar" class="flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <!-- ปุ่มลัด -->
+                <div class="flex flex-wrap gap-2 text-xs font-bold pt-1 border-t border-slate-100">
+                    <button onclick="selectMonth(true)" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1"><i data-lucide="check-check" class="w-3.5 h-3.5"></i> เลือกทั้งเดือนนี้</button>
+                    <button onclick="selectMonth(false)" class="px-3 py-1.5 rounded-lg border bg-white text-slate-700 hover:bg-slate-50 flex items-center gap-1"><i data-lucide="square" class="w-3.5 h-3.5"></i> เอาเดือนนี้ออก</button>
+                    <button onclick="selectMissedOnly()" id="btn-select-missed" class="px-3 py-1.5 rounded-lg border bg-red-50 text-red-700 border-red-200 hover:bg-red-100 flex items-center gap-1 disabled:opacity-40"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> เฉพาะที่เคยผิด (<span id="missed-count">0</span>)</button>
+                    <button onclick="selectUnmasteredThisMonth()" class="px-3 py-1.5 rounded-lg border bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 flex items-center gap-1"><i data-lucide="circle-dashed" class="w-3.5 h-3.5"></i> เฉพาะที่ยังไม่ผ่าน (เดือนนี้)</button>
+                    <button onclick="selectAll()" class="px-3 py-1.5 rounded-lg border bg-slate-800 text-white hover:bg-slate-900 flex items-center gap-1"><i data-lucide="layers" class="w-3.5 h-3.5"></i> เลือกทั้งหมด (500)</button>
+                    <button onclick="selectNone()" class="px-3 py-1.5 rounded-lg border bg-white text-slate-700 hover:bg-slate-50 flex items-center gap-1"><i data-lucide="x" class="w-3.5 h-3.5"></i> ล้างทั้งหมด</button>
+                </div>
+            </div>
+
+            <!-- ทูลบาร์: จัดกลุ่มช่วยจำ + ขอบเขต + ค้นหา -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div class="space-y-1.5">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> จัดกลุ่มช่วยจำ — เห็นรูปแบบสระชัดขึ้น
+                        </div>
+                        <div class="seg" id="view-mode-seg">
+                            <button data-vm="month" class="active" onclick="setViewMode('month')">เรียงตามเดือน</button>
+                            <button data-vm="vowel" onclick="setViewMode('vowel')">กลุ่มรูปแบบสระ</button>
+                            <button data-vm="bab" onclick="setViewMode('bab')">กลุ่มบับการผัน</button>
+                            <button data-vm="sem" onclick="setViewMode('sem')">กลุ่มความหมาย</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- ขอบเขต: เลือกเดือนที่จะรวมในมุมมองจัดกลุ่ม (แบบเดียวกับ “เลือกคำที่จะฝึก”) -->
+                <div id="scope-wrap" class="hidden pt-2 border-t border-slate-100">
+                    <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="calendar-range" class="w-3.5 h-3.5"></i> ขอบเขต — เลือกเดือนที่จะรวม (เลือกได้หลายเดือน)
+                        </div>
+                        <div class="flex gap-1.5 text-[11px] font-bold">
+                            <button onclick="scopeAllMonths()" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i> ทั้งหมด</button>
+                            <button onclick="scopeThisMonthOnly()" class="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">เฉพาะเดือนนี้</button>
+                        </div>
+                    </div>
+                    <div id="scope-month-bar" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <div class="relative w-full max-w-sm">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="vocab-search" oninput="filterVocab()" placeholder="ค้นหาข้ามทุกเดือน — ไทย หรือ อักษรอาหรับ..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium whitespace-nowrap" id="vocab-count-indicator"></span>
+                </div>
+                <p id="view-mode-hint" class="text-[11px] text-slate-500 leading-relaxed hidden"></p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-800 text-white">
+                                <th class="py-4 px-3 font-bold text-center w-12">ฝึก</th>
+                                <th class="py-4 px-4 font-bold text-center w-12">ที่</th>
+                                <th class="py-4 px-6 font-bold text-blue-200">ความหมายภาษาไทย</th>
+                                <th class="py-4 px-6 font-bold text-rose-200 text-right font-arabic">อดีต (มาฎี)</th>
+                                <th class="py-4 px-6 font-bold text-emerald-200 text-right font-arabic">ปัจจุบัน (มุฎอเรี๊ยะอ์)</th>
+                                <th class="py-4 px-6 font-bold text-amber-200 text-right font-arabic">มัศดัร (อาการนาม)</th>
+                                <th class="py-4 px-4 font-bold text-center w-16">ฟังเสียง</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vocab-table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 2: LEARNING FLASHCARDS ==================== -->
+        <section id="page-flashcard" class="hidden space-y-5 max-w-xl mx-auto">
+            <!-- แถบขอบเขต: เลือกคำที่จะฝึก (แบบเดียวกับแท็บตารางศัพท์) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                        <i data-lucide="list-checks" class="w-4 h-4 text-indigo-600"></i> ขอบเขตที่จะฝึก
+                    </h3>
+                    <span class="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl whitespace-nowrap" id="fc-scope-badge">เลือกฝึก 0 คำ</span>
+                </div>
+                <div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">เดือน / บท</div>
+                    <div id="fc-month-bar" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <div class="flex flex-wrap gap-1.5 pt-1 border-t border-slate-100 text-xs font-bold">
+                    <button onclick="fcQuickScope('nextmonth')" class="mchip"><i data-lucide="plus" class="w-3.5 h-3.5 inline -mt-0.5"></i> + เดือนถัดไป</button>
+                    <button onclick="fcQuickScope('due')" class="mchip"><i data-lucide="alarm-clock" class="w-3.5 h-3.5 inline -mt-0.5"></i> ครบกำหนดทบทวน <span class="mc-sub" id="fc-due-count">0</span></button>
+                    <button onclick="fcQuickScope('weak')" class="mchip"><i data-lucide="alert-circle" class="w-3.5 h-3.5 inline -mt-0.5"></i> จุดอ่อน <span class="mc-sub" id="fc-weak-count">0</span></button>
+                    <button onclick="fcQuickScope('all')" class="mchip"><i data-lucide="layers" class="w-3.5 h-3.5 inline -mt-0.5"></i> ทั้งหมด 500</button>
+                    <button onclick="fcQuickScope('none')" class="mchip"><i data-lucide="x" class="w-3.5 h-3.5 inline -mt-0.5"></i> ล้าง</button>
+                </div>
+            </div>
+
+            <!-- โหมดฝึก + หน้าโจทย์ -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> โหมดฝึก</div>
+                    <div class="seg" id="fc-mode-seg">
+                        <button data-fm="srs" class="active" onclick="setFcMode('srs')">ทบทวนตามกำหนด (SRS)</button>
+                        <button data-fm="weak" onclick="setFcMode('weak')">เจาะจุดอ่อน</button>
+                        <button data-fm="all" onclick="setFcMode('all')">ทั้งหมด</button>
+                        <button data-fm="random" onclick="setFcMode('random')">สุ่มลำดับ</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><i data-lucide="eye" class="w-3.5 h-3.5"></i> ด้านโจทย์ที่จะแสดง</div>
+                    <div class="seg" id="fc-front-seg">
+                        <button data-ff="th" class="active" onclick="setFlashcardFrontSide('th')">ความหมายไทย</button>
+                        <button data-ff="past" onclick="setFlashcardFrontSide('past')">อดีต</button>
+                        <button data-ff="present" onclick="setFlashcardFrontSide('present')">ปัจจุบัน</button>
+                        <button data-ff="masdar" onclick="setFlashcardFrontSide('masdar')">มัศดัร</button>
+                        <button data-ff="random" onclick="setFlashcardFrontSide('random')">🎲 สุ่มทั้งหมด</button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-500 flex items-center gap-1.5 pt-1 border-t border-slate-100">
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-500"></i>
+                    <span id="fc-queue-info">กำลังฝึก 0 คำ</span>
+                </p>
+                <div id="fc-legend"></div>
+            </div>
+
+            <!-- Flashcard Component -->
+            <div class="w-full h-80 perspective cursor-pointer" onclick="flipFlashcard()">
+                <div id="flashcard-inner" class="card-flip-inner w-full h-full relative rounded-3xl border border-slate-200 shadow-lg bg-white">
+                    <!-- Front View (Configurable) -->
+                    <div class="card-face w-full h-full absolute inset-0 flex flex-col justify-between p-8 rounded-3xl bg-gradient-to-br from-white to-slate-50">
+                        <div class="flex justify-between items-center w-full">
+                            <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full" id="flashcard-index">ใบที่ 1 / 50</span>
+                            <span class="text-[10px] uppercase font-black" id="fc-card-status"></span>
+                        </div>
+                        <div class="text-center">
+                            <div id="flashcard-front-content" class="leading-relaxed">...</div>
+                        </div>
+                        <div class="text-center text-xs font-bold text-indigo-500 animate-pulse flex items-center justify-center gap-1">
+                            <i data-lucide="rotate-3d" class="w-4 h-4"></i> แตะเพื่อพลิกดูข้อมูลทั้งหมดพร้อมคำแปล
+                        </div>
+                    </div>
+                    <!-- Back View (Shows All 4 Elements) -->
+                    <div class="card-face card-back w-full h-full absolute inset-0 flex flex-col justify-between p-6 rounded-3xl bg-white">
+                        <div class="flex justify-between items-center w-full border-b border-slate-100 pb-2">
+                            <span class="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">เฉลยข้อมูลครบถ้วน</span>
+                            <button onclick="event.stopPropagation(); speakActiveFlashcard();" class="p-2 text-indigo-600 hover:bg-slate-100 rounded-full transition-all">
+                                <i data-lucide="volume-2" class="w-4.5 h-4.5"></i>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-1">
+                            <div class="flex flex-col items-center p-2 rounded-xl border bg-rose-50/30 border-rose-100">
+                                <span class="text-[9px] text-rose-500 font-bold mb-0.5">อดีต (มาฎี)</span>
+                                <div class="font-arabic text-3xl ar-word" id="fc-back-past" dir="rtl"></div>
+                            </div>
+                            <div class="flex flex-col items-center p-2 rounded-xl border bg-emerald-50/30 border-emerald-100">
+                                <span class="text-[9px] text-emerald-500 font-bold mb-0.5">ปัจจุบัน (มุฎอเรี๊ยะอ์)</span>
+                                <div class="font-arabic text-3xl ar-word" id="fc-back-present" dir="rtl"></div>
+                            </div>
+                            <div class="flex flex-col items-center p-2 rounded-xl border bg-amber-50/30 border-amber-100">
+                                <span class="text-[9px] text-amber-500 font-bold mb-0.5">มัศดัร</span>
+                                <div class="font-arabic text-3xl ar-word" id="fc-back-masdar" dir="rtl"></div>
+                            </div>
+                        </div>
+                        <div class="text-center bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100/70">
+                            <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">ความหมายภาษาไทย</span>
+                            <span class="text-md font-bold text-slate-800" id="fc-back-th">...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ปุ่มให้คะแนน SRS (โผล่หลังพลิก) -->
+            <div id="fc-grade-row" class="hidden gap-2">
+                <button onclick="gradeFlashcard('again')" class="gbtn gbtn-again"><span>ยังจำไม่ได้</span><span class="gsub" id="gsub-again">ทบทวนใหม่</span></button>
+                <button onclick="gradeFlashcard('good')" class="gbtn gbtn-good"><span>จำได้</span><span class="gsub" id="gsub-good">+1 ระดับ</span></button>
+                <button onclick="gradeFlashcard('easy')" class="gbtn gbtn-easy"><span>ง่ายมาก</span><span class="gsub" id="gsub-easy">+2 ระดับ</span></button>
+            </div>
+            <!-- แถบเลื่อน/สุ่ม (โหมดไม่ใช่ SRS) -->
+            <div id="fc-nav-row" class="flex justify-between items-center gap-3">
+                <button onclick="prevFlashcard()" class="p-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-1">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i> ก่อนหน้า
+                </button>
+                <button onclick="shuffleFlashcards()" class="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl transition-all flex items-center gap-1">
+                    <i data-lucide="shuffle" class="w-4 h-4"></i> สุ่มลำดับใหม่
+                </button>
+                <button onclick="nextFlashcard()" class="p-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center gap-1">
+                    ถัดไป <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-center text-[11px] text-slate-400">เคล็ดลับ: เว้นวรรค = พลิกบัตร • โหมด SRS ให้คะแนนแล้วระบบจะนัดทบทวนเอง</p>
+        </section>
+
+        <!-- ==================== TAB 3: ORAL EXAM ROOM ==================== -->
+        <section id="page-exam" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Stats Dashboard Side -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-fit space-y-6">
+                    <div class="space-y-3">
+                        <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-red-500"></i> โหมดสอบปากเปล่าจำลองคุณครูสุ่ม
+                        </h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            ระบบจะดึงคำใบ้สุ่มขึ้นมา 1 ช่องสถานะอย่างเป็นระเบียบ ให้นักเรียนท่องออกเสียงทั้งหมด 4 สถานะรวมความหมายให้คุณครูฟัง จากนั้นกดคลิกพลิกตรวจคำตอบด้วยตนเองเพื่อเก็บสถิติ
+                        </p>
+                        <div class="grid grid-cols-1 gap-2 pt-1">
+                            <button onclick="startExam('selected')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center justify-center gap-1.5">
+                                <i data-lucide="play" class="w-4 h-4"></i> เริ่มสอบจากคำที่เลือก (<span id="exam-selected-count">50</span> คำ)
+                            </button>
+                            <button onclick="startExam('all')" class="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5">
+                                <i data-lucide="layers" class="w-4 h-4"></i> สอบทั้งหมด 500 คำ
+                            </button>
+                        </div>
+                    </div>
+                    <hr class="border-slate-100">
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">บันทึกคะแนนรอบทดสอบปัจจุบัน</h4>
+                        <div class="grid grid-cols-2 gap-2 text-center">
+                            <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-xl">
+                                <span class="text-[10px] text-indigo-600 font-bold block">ทดสอบแล้ว</span>
+                                <span class="text-xl font-black text-indigo-900" id="stat-completed-cards">0 / 50</span>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
+                                <span class="text-[10px] text-emerald-600 font-bold block">ฉันตอบถูก 🟢</span>
+                                <span class="text-xl font-black text-emerald-900" id="stat-correct-count">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-red-50 border border-red-100 p-3 rounded-xl text-center">
+                            <span class="text-[10px] text-red-600 font-bold block">ฉันตอบผิด (ต้องสอบซ่อม) 🔴</span>
+                            <span class="text-lg font-black text-red-900" id="stat-wrong-count">0 คำ</span>
+                        </div>
+                    </div>
+                    <hr class="border-slate-100">
+                    <div id="exam-legend"></div>
+                </div>
+
+                <!-- Exam Main Board Interface -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between min-h-[440px]" id="exam-card-area">
+                    <div class="bg-slate-50 border-b border-slate-100 px-6 py-4 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-black">คำที่ <span id="current-card-num">1</span></span>
+                            <span class="text-xs sm:text-sm font-bold text-slate-700" id="exam-progress-text">ระบบกำลังดึงโจทย์...</span>
+                        </div>
+                        <div class="w-1/3 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                            <div id="progress-bar-fill" class="bg-red-600 h-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Main Exam Panel Window -->
+                    <div class="p-6 sm:p-10 flex-grow flex flex-col justify-center items-center">
+                        <div class="perspective w-full max-w-md h-80">
+                            <div id="exam-flip-container" class="card-flip-inner w-full h-full relative">
+                                <!-- FRONT CARD FACE -->
+                                <div class="card-face w-full h-full absolute inset-0 flex flex-col justify-between p-6 rounded-3xl border border-slate-200 bg-white shadow-md">
+                                    <div class="flex justify-between items-center w-full">
+                                        <span class="text-[10px] font-black text-slate-400 uppercase">โจทย์คำใบ้จากอาจารย์</span>
+                                        <span class="text-xs font-black bg-indigo-50 px-2.5 py-1 rounded-full text-indigo-700" id="exam-clue-badge">...</span>
+                                    </div>
+                                    <div class="text-center space-y-4 px-2">
+                                        <p class="text-[11px] text-slate-400">กรุณาท่องออกเสียงพยัญชนะรากศัพท์ให้ครบ ช้า ๆ ชัด ๆ</p>
+                                        <div id="exam-clue-display-word" class="font-arabic">...</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button onclick="flipExamCard()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center gap-2 mx-auto">
+                                            <i data-lucide="eye" class="w-4 h-4"></i> พลิกดูหน้าเฉลย 4 สถานะ
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- BACK CARD FACE -->
+                                <div class="card-face card-back w-full h-full absolute inset-0 flex flex-col justify-between p-5 rounded-3xl border border-slate-200 bg-white shadow-md">
+                                    <div class="flex justify-between items-center w-full border-b border-slate-100 pb-2">
+                                        <span class="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">หน้าตรวจผลคะแนนเฉลยสี่สถานะ</span>
+                                        <button onclick="speakExamArabicWord()" class="p-1.5 text-indigo-600 hover:bg-slate-100 rounded-full transition-all">
+                                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex flex-col gap-2.5 my-1">
+                                        <!-- Thai meaning banner -->
+                                        <div class="text-center bg-indigo-50/60 border border-indigo-100 rounded-xl py-2">
+                                            <span class="text-[9px] font-bold text-indigo-500 uppercase tracking-wider block">ความหมายภาษาไทย</span>
+                                            <span class="text-sm font-black text-slate-800" id="back-display-th">...</span>
+                                        </div>
+                                        <!-- Three states arranged evenly -->
+                                        <div class="grid grid-cols-3 gap-2 text-center">
+                                            <div class="flex flex-col items-center justify-start p-2 rounded-xl border color-past">
+                                                <span class="text-[9px] font-bold leading-tight mb-0.5">อดีต (มาฎี)</span>
+                                                <div class="font-arabic text-3xl ar-word" id="back-display-past" dir="rtl">...</div>
+                                            </div>
+                                            <div class="flex flex-col items-center justify-start p-2 rounded-xl border color-present">
+                                                <span class="text-[9px] font-bold leading-tight mb-0.5">ปัจจุบัน (มุฎอเรี๊ยะอ์)</span>
+                                                <div class="font-arabic text-3xl ar-word" id="back-display-present" dir="rtl">...</div>
+                                            </div>
+                                            <div class="flex flex-col items-center justify-start p-2 rounded-xl border color-masdar">
+                                                <span class="text-[9px] font-bold leading-tight mb-0.5">มัศดัร</span>
+                                                <div class="font-arabic text-3xl ar-word" id="back-display-masdar" dir="rtl">...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 w-full pt-1">
+                                        <button onclick="gradeOralCard(false)" class="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center justify-center gap-1">
+                                            <i data-lucide="x-circle" class="w-4 h-4"></i> ท่องผิด ❌
+                                        </button>
+                                        <button onclick="gradeOralCard(true)" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center justify-center gap-1">
+                                            <i data-lucide="check-circle" class="w-4 h-4"></i> ท่องถูก 🟢
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 border-t border-slate-100 px-6 py-3 text-center text-xs text-slate-400">
+                        คุณสามารถกดแป้นคีย์บอร์ด <b>"Spacebar"</b> เพื่อสั่งพลิกการ์ดสลับตรวจคำตอบได้ทันที
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam End Report View -->
+            <div id="exam-report-card" class="hidden bg-white p-6 rounded-2xl shadow-xl border border-indigo-100 space-y-6">
+                <div class="text-center space-y-1">
+                    <div class="inline-flex p-3 bg-indigo-50 text-indigo-700 rounded-full mb-2">
+                        <i data-lucide="clipboard-check" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-800">สรุปผลประเมินรอบทดสอบปากเปล่า</h3>
+                    <p class="text-xs text-slate-400">บันทึกสถิติข้อที่ผ่านและรายชื่อพยางค์รากศัพท์ที่ต้องทวนซ้ำ</p>
+                </div>
+                <div class="max-w-md mx-auto bg-slate-50 p-5 rounded-2xl grid grid-cols-2 gap-4 text-center border shadow-inner">
+                    <div class="border-r border-slate-200">
+                        <div class="text-2xl font-black text-emerald-600" id="report-correct-count">0 คำ</div>
+                        <div class="text-xs text-slate-400">ท่องจำได้ถูกต้อง</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-red-600" id="report-wrong-count">0 คำ</div>
+                        <div class="text-xs text-slate-400">ต้องฝึกฝนสอบซ่อม</div>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-2">
+                    <button onclick="startExam('selected')" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> สอบชุดที่เลือกอีกครั้ง
+                    </button>
+                    <button onclick="startExam('all')" class="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1">
+                        <i data-lucide="layers" class="w-4 h-4"></i> ทดสอบใหม่ทั้งหมด (500 คำ)
+                    </button>
+                    <button id="btn-retest-failures" onclick="startExam('retry')" class="px-5 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 disabled:opacity-40">
+                        <i data-lucide="zap" class="w-4 h-4"></i> สอบซ่อมเฉพาะข้อที่เพิ่งผิด!
+                    </button>
+                </div>
+                <div class="space-y-3 pt-2">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">ผลลัพธ์การประเมินแยกคำศัพท์สี่สถานะ:</h4>
+                    <div class="overflow-x-auto max-h-80 border border-slate-100 rounded-xl">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0">
+                                <tr>
+                                    <th class="p-3">คำไทย</th>
+                                    <th class="p-3">อดีต (มาฎี)</th>
+                                    <th class="p-3">ปัจจุบัน (มุฎอเรี๊ยะอ์)</th>
+                                    <th class="p-3">มัศดัร (อาการนาม)</th>
+                                    <th class="p-3 text-center">ผลลัพธ์</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TAB 4: STATS DASHBOARD ==================== -->
+        <section id="page-stats" class="hidden space-y-5">
+            <!-- สรุปภาพรวม -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-2xl font-black text-slate-800" id="ov-total">500</div>
+                    <div class="text-[11px] font-bold text-slate-400 mt-0.5">คำทั้งหมด</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-2xl font-black text-indigo-600" id="ov-learning">0</div>
+                    <div class="text-[11px] font-bold text-slate-400 mt-0.5">กำลังเรียน</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-2xl font-black text-emerald-600" id="ov-mastered">0</div>
+                    <div class="text-[11px] font-bold text-slate-400 mt-0.5">แม่นแล้ว</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-2xl font-black text-rose-600" id="ov-weak">0</div>
+                    <div class="text-[11px] font-bold text-slate-400 mt-0.5">จุดอ่อน</div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center col-span-2 lg:col-span-1">
+                    <div class="text-2xl font-black text-amber-600" id="ov-due">0</div>
+                    <div class="text-[11px] font-bold text-slate-400 mt-0.5">ครบกำหนดทบทวน</div>
+                </div>
+            </div>
+
+            <!-- ความคืบหน้ารวม + ปุ่มลัด -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                <div class="flex items-center justify-between text-xs font-bold">
+                    <span class="text-slate-600">ความคืบหน้าการจำทั้งคลัง</span>
+                    <span class="text-slate-500"><span id="ov-pct">0</span>% แม่นแล้ว</span>
+                </div>
+                <div class="accbar"><span id="ov-progressbar" style="width:0%"></span></div>
+                <div class="flex flex-wrap gap-2 pt-2 text-xs font-bold">
+                    <button onclick="switchTab('flashcard'); fcQuickScope('due'); setFcMode('srs');" class="mchip on"><i data-lucide="alarm-clock" class="w-3.5 h-3.5 inline -mt-0.5"></i> ทบทวนคำที่ครบกำหนด</button>
+                    <button onclick="switchTab('flashcard'); setFcMode('weak');" class="mchip"><i data-lucide="alert-circle" class="w-3.5 h-3.5 inline -mt-0.5"></i> ฝึกจุดอ่อน</button>
+                    <button onclick="exportProgressReset()" class="mchip"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline -mt-0.5"></i> รีเซ็ตสถิติ SRS</button>
+                </div>
+            </div>
+
+            <!-- ตารางแยกมุมมอง -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5"><i data-lucide="table-2" class="w-4 h-4 text-indigo-600"></i> ตารางสถิติ</h3>
+                    <div class="seg" id="stats-view-seg">
+                        <button data-sv="month" class="active" onclick="setStatsView('month')">ตามเดือน</button>
+                        <button data-sv="bab" onclick="setStatsView('bab')">ตามบับ</button>
+                        <button data-sv="sem" onclick="setStatsView('sem')">ตามหมวด</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[60vh]">
+                    <table class="stat-tbl">
+                        <thead>
+                            <tr>
+                                <th id="stats-col0">เดือน</th>
+                                <th>คำ</th>
+                                <th>กำลังเรียน</th>
+                                <th>แม่น</th>
+                                <th>จุดอ่อน</th>
+                                <th>ครบกำหนด</th>
+                                <th class="barcell">ความแม่น</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="text-center text-[11px] text-slate-400">“แม่น” = ผ่านการทบทวนถึงระดับสูงสุด • “จุดอ่อน” = เคยตอบผิดหรือยังอยู่ระดับต้น • “ครบกำหนด” = ถึงเวลาทบทวนตามตาราง SRS แล้ว</p>
+        </section>
+    </main>
+
+    <!-- JS Core Engineering Framework -->
+    <script>
+        // Pure Arabic characters database verified to clear square-boxes bugs
+        const vocabularyDatabase = [
+            { th: "นอนหลับ", past: "نَامَ", present: "يَنَامُ", masdar: "نَوْمٌ", audioStr: "نَامَ ، يَنَامُ ، نَوْمٌ" },
+            { th: "ล้าง", past: "غَسَلَ", present: "يَغْسِلُ", masdar: "غُسْلٌ", audioStr: "غَسَلَ ، يَغْسِلُ ، غُسْلٌ" },
+            { th: "ปัสสาวะ", past: "بَالَ", present: "يَبُولُ", masdar: "بَوْلٌ", audioStr: "بَالَ ، يَبُولُ ، بَوْلٌ" },
+            { th: "เป็น, คือ", past: "كَانَ", present: "يَكُونُ", masdar: "كَوْنٌ", audioStr: "كَانَ ، يَكُونُ ، كَوْنٌ" },
+            { th: "กลายเป็น", past: "صَارَ", present: "يَصِيرُ", masdar: "صَيْرُورَةٌ", audioStr: "صَارَ ، يَصِيرُ ، صَيْرُورَةٌ" },
+            { th: "กิน", past: "أَكَلَ", present: "يَأْكُلُ", masdar: "أَكْلٌ", audioStr: "أَكَلَ ، يَأْكُلُ ، أَكْلٌ" },
+            { th: "ดื่ม", past: "شَرِبَ", present: "يَشْرَبُ", masdar: "شُرْبٌ", audioStr: "شَرِبَ ، يَشْرَبُ ، شُرْبٌ" },
+            { th: "กลืน", past: "بَلَعَ", present: "يَبْلَعُ", masdar: "بَلْعٌ", audioStr: "بَلَعَ ، يَبْلَعُ ، بَلْعٌ" },
+            { th: "ดม", past: "شَمَّ", present: "يَشَمُّ", masdar: "شَمٌّ", audioStr: "شَمَّ ، يَشَمُّ ، شَمٌّ" },
+            { th: "ขับยานพาหนะ", past: "سَاقَ", present: "يَسُوقُ", masdar: "سَوْقٌ", audioStr: "سَاقَ ، يَسُوقُ ، سَوْقٌ" },
+            { th: "โดยสาร", past: "رَكِبَ", present: "يَرْكَبُ", masdar: "رُكُوبٌ", audioStr: "رَكِبَ ، يَرْكَبُ ، رُكُوبٌ" },
+            { th: "หยุด, ยืน", past: "وَقَفَ", present: "يَقِفُ", masdar: "وُقُوفٌ", audioStr: "وَقَفَ ، يَقِفُ ، وُقُوفٌ" },
+            { th: "ลุกยืน", past: "قَامَ", present: "يَقُومُ", masdar: "قِيَامٌ", audioStr: "قَامَ ، يَقُومُ ، قِيَامٌ" },
+            { th: "นั่ง", past: "جَلَسَ", present: "يَجْلِسُ", masdar: "جُلُوسٌ", audioStr: "جَلَسَ ، يَجْلِسُ ، جُلُوسٌ" },
+            { th: "เดิน, แล่น", past: "سَارَ", present: "يَسِيرُ", masdar: "سَيْرٌ", audioStr: "سَارَ ، يَسِيرُ ، سَيْرٌ" },
+            { th: "เดิน", past: "مَشَى", present: "يَمْشِي", masdar: "مَشْيٌ", audioStr: "مَشَى ، يَمْشِي ، مَشْيٌ" },
+            { th: "วิ่ง", past: "جَرَى", present: "يَجْرِي", masdar: "جَرْيٌ", audioStr: "جَرَى ، يَجْرِي ، جَرْيٌ" },
+            { th: "ไหล, ทะลัก", past: "سَالَ", present: "يَسِيلُ", masdar: "سَيْلٌ", audioStr: "سَالَ ، يَسِيلُ ، سَيْلٌ" },
+            { th: "ว่ายน้ำ", past: "سَبَحَ", present: "يَسْبَحُ", masdar: "سِبَاحَةٌ", audioStr: "سَبَحَ ، يَسْبَحُ ، سِبَاحَةٌ" },
+            { th: "ไป", past: "ذَهَبَ", present: "يَذْهَبُ", masdar: "ذَهَابٌ", audioStr: "ذَهَبَ ، يَذْهَبُ ، ذَهَابٌ" },
+            { th: "มา", past: "حَضَرَ", present: "يَحْضُرُ", masdar: "حُضُورٌ", audioStr: "حَضَرَ ، يَحْضُرُ ، حُضُورٌ" },
+            { th: "กลับ", past: "رَجَعَ", present: "يَرْجِعُ", masdar: "رُجُوعٌ", audioStr: "رَجَعَ ، يَرْجِعُ ، رُجُوعٌ" },
+            { th: "ขึ้น", past: "صَعِدَ", present: "يَصْعَدُ", masdar: "صُعُودٌ", audioStr: "صَعِدَ ، يَصْعَدُ ، صُعُودٌ" },
+            { th: "ลง", past: "نَزَلَ", present: "يَنْزِلُ", masdar: "نُزُولٌ", audioStr: "نَزَلَ ، يَنْزِلُ ، نُزُولٌ" },
+            { th: "ตก", past: "سَقَطَ", present: "يَسْقُطُ", masdar: "سُقُوطٌ", audioStr: "سَقَطَ ، يَسْقُطُ ، سُقُوطٌ" },
+            { th: "เปิด", past: "فَتَحَ", present: "يَفْتَحُ", masdar: "فَتْحٌ", audioStr: "فَتَحَ ، يَفْتَحُ ، فَتْحٌ" },
+            { th: "ปิด", past: "غَلَقَ", present: "يَغْلِقُ", masdar: "غَلْقٌ", audioStr: "غَلَقَ ، يَغْلِقُ ، غَلْقٌ" },
+            { th: "สวมใส่", past: "لَبِسَ", present: "يَلْبَسُ", masdar: "لَبْسٌ", audioStr: "لَبِسَ ، يَلْبَسُ ، لَبْسٌ" },
+            { th: "ถอด", past: "خَلَعَ", present: "يَخْلَعُ", masdar: "خَلْعٌ", audioStr: "خَلَعَ ، يَخْلَعُ ، خَلْعٌ" },
+            { th: "ยก", past: "رَفَعَ", present: "يَرْفَعُ", masdar: "رَفْعٌ", audioStr: "رَفَعَ ، يَرْفَعُ ، رَفْعٌ" },
+            { th: "วาง", past: "وَضَعَ", present: "يَضَعُ", masdar: "وَضْعٌ", audioStr: "وَضَعَ ، يَضَعُ ، وَضْعٌ" },
+            { th: "ได้ยิน", past: "سَمِعَ", present: "يَسْمَعُ", masdar: "سَمْعٌ", audioStr: "سَمِعَ ، يَسْمَعُ ، سَمْعٌ" },
+            { th: "กระทำ", past: "فَعَلَ", present: "يَفْعَلُ", masdar: "فِعْلٌ", audioStr: "فَعَلَ ، يَفْعَلُ ، فِعْلٌ" },
+            { th: "ทำงาน", past: "عَمِلَ", present: "يَعْمَلُ", masdar: "عَمَلٌ", audioStr: "عَمِلَ ، يَعْمَلُ ، عَمَلٌ" },
+            { th: "ทำ, เริ่ม", past: "جَعَلَ", present: "يَجْعَلُ", masdar: "جَعْلٌ", audioStr: "جَعَلَ ، يَجْعَلُ ، جَعْلٌ" },
+            { th: "รวบรวม", past: "جَمَعَ", present: "يَجْمَعُ", masdar: "جَمْعٌ", audioStr: "جَمَعَ ، يَجْمَعُ ، جَمْعٌ" },
+            { th: "ขอ, ถาม", past: "سَأَلَ", present: "يَسْأَلُ", masdar: "سُؤَالٌ", audioStr: "سَأَلَ ، يَسْأَلُ ، سُؤَالٌ" },
+            { th: "ตัดสิน", past: "حَكَمَ", present: "يَحْكُمُ", masdar: "حُكْمٌ", audioStr: "حَكَمَ ، يَحْكُمُ ، حُكْمٌ" },
+            { th: "ให้", past: "مَنَحَ", present: "يَمْنَحُ", masdar: "مَنْحٌ", audioStr: "مَنَحَ ، يَمْنَحُ ، مَنْحٌ" },
+            { th: "ให้ (อีกคำ)", past: "وَهَبَ", present: "يَهَبُ", masdar: "وَهْبٌ", audioStr: "وَهَبَ ، يَهَبُ ، وَهْبٌ" },
+            { th: "รับ", past: "قَبِلَ", present: "يَقْبَلُ", masdar: "قَبُولٌ", audioStr: "قَبِلَ ، يَقْبَلُ ، قَبُولٌ" },
+            { th: "เอา", past: "أَخَذَ", present: "يَأْخُذُ", masdar: "أَخْذٌ", audioStr: "أَخَذَ ، يَأْخُذُ ، أَخْذٌ" },
+            { th: "มองดู", past: "نَظَرَ", present: "يَنْظُرُ", masdar: "نَظَرٌ", audioStr: "نَظَرَ ، يَنْظُرُ ، نَظَرٌ" },
+            { th: "ใช้ปัญญา", past: "عَقَلَ", present: "يَعْقِلُ", masdar: "عَقْلٌ", audioStr: "عَقَلَ ، يَعْقِلُ ، عَقْلٌ" },
+            { th: "มองเห็น, รับรู้", past: "بَصُرَ", present: "يَبْصُرُ", masdar: "بَصَرٌ", audioStr: "بَصُرَ ، يَبْصُرُ ، بَصَرٌ" },
+            { th: "เห็น", past: "رَأَى", present: "يَرَى", masdar: "رَأْيٌ", audioStr: "رَأَى ، يَرَى ، رَأْيٌ" },
+            { th: "อ่าน", past: "قَرَأَ", present: "يَقْرَأُ", masdar: "قِرَاءَةٌ", audioStr: "قَرَأَ ، يَقْرَأُ ، قِرَاءَةٌ" },
+            { th: "เขียน", past: "كَتَبَ", present: "يَكْتُبُ", masdar: "كِتَابَةٌ", audioStr: "كَتَبَ ، يَكْتُبُ ، كِتَابَةٌ" },
+            { th: "ลบ", past: "مَحَا", present: "يَمْحُو", masdar: "مَحْوٌ", audioStr: "مَحَا ، يَمْحُو ، مَحْوٌ" },
+            { th: "ลบ, ลูบ", past: "مَسَحَ", present: "يَمْسَحُ", masdar: "مَسْحٌ", audioStr: "مَسَحَ ، يَمْسَحُ ، مَسْحٌ" },
+            { th: "สัมผัส, แตะ", past: "لَمَسَ", present: "يَلْمِسُ", masdar: "لَمْسٌ", audioStr: "لَمَسَ ، يَلْمِسُ ، لَمْسٌ" },
+            { th: "ท่องจำ, รักษา", past: "حَفِظَ", present: "يَحْفَظُ", masdar: "حِفْظٌ", audioStr: "حَفِظَ ، يَحْفَظُ ، حِفْظٌ" },
+            { th: "ลืม", past: "نَسِيَ", present: "يَنْسَى", masdar: "نِسْيَانٌ", audioStr: "نَسِيَ ، يَنْسَى ، نِسْيَانٌ" },
+            { th: "รับใช้/บริการ", past: "خَدَمَ", present: "يَخْدِمُ", masdar: "خِدْمَةٌ", audioStr: "خَدَمَ ، يَخْدِمُ ، خِدْمَةٌ" },
+            { th: "เยี่ยมเยียน", past: "زَارَ", present: "يَزُورُ", masdar: "زِيَارَةٌ", audioStr: "زَارَ ، يَزُورُ ، زِيَارَةٌ" },
+            { th: "เจ็บป่วย", past: "مَرِضَ", present: "يَمْرَضُ", masdar: "مَرَضٌ", audioStr: "مَرِضَ ، يَمْرَضُ ، مَرَضٌ" },
+            { th: "ไอ", past: "سَعَلَ", present: "يَسْعُلُ", masdar: "سُعَالٌ", audioStr: "سَعَلَ ، يَسْعُلُ ، سُعَالٌ" },
+            { th: "จาม", past: "عَطَسَ", present: "يَعْطِسُ", masdar: "عَطْسٌ", audioStr: "عَطَسَ ، يَعْطِسُ ، عَطْسٌ" },
+            { th: "ฆ่า", past: "قَتَلَ", present: "يَقْتُلُ", masdar: "قَتْلٌ", audioStr: "قَتَلَ ، يَقْتُلُ ، قَتْلٌ" },
+            { th: "ตาย", past: "مَاتَ", present: "يَمُوتُ", masdar: "مَوْتٌ", audioStr: "مَاتَ ، يَمُوتُ ، مَوْتٌ" },
+            { th: "กล่าว", past: "قَالَ", present: "يَقُولُ", masdar: "قَوْلٌ", audioStr: "قَالَ ، يَقُولُ ، قَوْلٌ" },
+            { th: "ตักเตือน", past: "نَصَحَ", present: "يَنْصَحُ", masdar: "نُصْحٌ", audioStr: "نَصَحَ ، يَنْصَحُ ، نُصْحٌ" },
+            { th: "นับ", past: "عَدَّ", present: "يَعُدُّ", masdar: "عَدٌّ", audioStr: "عَدَّ ، يَعُدُّ ، عَدٌّ" },
+            { th: "เรียน", past: "دَرَسَ", present: "يَدْرُسُ", masdar: "دِرَاسَةٌ", audioStr: "دَرَسَ ، يَدْرُسُ ، دِرَاسَةٌ" },
+            { th: "เชิญชวน", past: "دَعَا", present: "يَدْعُو", masdar: "دَعْوَةٌ", audioStr: "دَعَا ، يَدْعُو ، دَعْوَةٌ" },
+            { th: "เล่า, ตัด", past: "قَصَّ", present: "يَقُصُّ", masdar: "قَصٌّ", audioStr: "قَصَّ ، يَقُصُّ ، قَصٌّ" },
+            { th: "เล่า", past: "حَكَى", present: "يَحْكِي", masdar: "حِكَايَةٌ", audioStr: "حَكَى ، يَحْكِي ، حِكَايَةٌ" },
+            { th: "โกหก", past: "كَذَبَ", present: "يَكْذِبُ", masdar: "كَذِبٌ", audioStr: "كَذَبَ ، يَكْذِبُ ، كَذِبٌ" },
+            { th: "หลอกลวง", past: "خَدَعَ", present: "يَخْدَعُ", masdar: "خَدْعٌ", audioStr: "خَدَعَ ، يَخْدَعُ ، خَدْعٌ" },
+            { th: "รักษา", past: "صَانَ", present: "يَصُونُ", masdar: "صِيَانَةٌ", audioStr: "صَانَ ، يَصُونُ ، صِيَانَةٌ" },
+            { th: "เข้า", past: "دَخَلَ", present: "يَدْخُلُ", masdar: "دُخُولٌ", audioStr: "دَخَلَ ، يَدْخُلُ ، دُخُولٌ" },
+            { th: "ออก", past: "خَرَجَ", present: "يَخْرُجُ", masdar: "خُرُوجٌ", audioStr: "خَرَجَ ، يَخْرُجُ ، خُرُوجٌ" },
+            { th: "หัวเราะ", past: "ضَحِكَ", present: "يَضْحَكُ", masdar: "ضَحِكٌ", audioStr: "ضَحِكَ ، يَضْحَكُ ، ضَحِكٌ" },
+            { th: "ร้องไห้", past: "بَكَى", present: "يَبْكِي", masdar: "بُكَاءٌ", audioStr: "بَكَى ، يَبْكِي ، بُكَاءٌ" },
+            { th: "โกรธ", past: "غَضِبَ", present: "يَغْضَبُ", masdar: "غَضَبٌ", audioStr: "غَضِبَ ، يَغْضَبُ ، غَضَبٌ" },
+            { th: "เสียใจ", past: "حَزِنَ", present: "يَحْزَنُ", masdar: "حُزْنٌ", audioStr: "حَزِنَ ، يَحْزَنُ ، حُزْنٌ" },
+            { th: "กลุ้มใจ", past: "هَمَّ", present: "يَهُمُّ", masdar: "هَمٌّ", audioStr: "هَمَّ ، يَهُمُّ ، هَمٌّ" },
+            { th: "สิ้นหวัง", past: "يَئِسَ", present: "يَيْأَسُ", masdar: "يَأْسٌ", audioStr: "يَئِسَ ، يَيْأَسُ ، يَأْسٌ" },
+            { th: "มีความหวัง", past: "رَجَا", present: "يَرْجُو", masdar: "رَجَاءٌ", audioStr: "رَجَا ، يَرْجُو ، رَجَاءٌ" },
+            { th: "สงสัย", past: "شَكَّ", present: "يَشُكُّ", masdar: "شَكٌّ", audioStr: "شَكَّ ، يَشُكُّ ، شَكٌّ" },
+            { th: "คาดเดา", past: "ظَنَّ", present: "يَظُنُّ", masdar: "ظَنٌّ", audioStr: "ظَنَّ ، يَظُنُّ ، ظَنٌّ" },
+            { th: "คาดคิด", past: "حَسِبَ", present: "يَحْسَبُ", masdar: "حُسْبَانٌ", audioStr: "حَسِبَ ، يَحْسَبُ ، حُسْبَانٌ" },
+            { th: "มโน, นึกทึกทัก", past: "وَهِمَ", present: "يَهِمُ", masdar: "وَهْمٌ", audioStr: "وَهِمَ ، يَهِمُ ، وَهْمٌ" },
+            { th: "ผิดพลาด, หลงลืม", past: "وَهَمَ", present: "يَوْهَمُ", masdar: "وَهَمٌ", audioStr: "وَهَمَ ، يَوْهَمُ ، وَهَمٌ" },
+            { th: "ดีใจ", past: "فَرِحَ", present: "يَفْرَحُ", masdar: "فَرَحٌ", audioStr: "فَرِحَ ، يَفْرَحُ ، فَرَحٌ" },
+            { th: "พอใจ", past: "رَضِيَ", present: "يَرْضَى", masdar: "رِضًا", audioStr: "رَضِيَ ، يَرْضَى ، رِضًا" },
+            { th: "รังเกียจ", past: "كَرِهَ", present: "يَكْرَهُ", masdar: "كَرَاهَةٌ", audioStr: "كَرِهَ ، يَكْرَهُ ، كَرَاهَةٌ" },
+            { th: "เกลียดชัง", past: "بَغَضَ", present: "يَبْغَضُ", masdar: "بُغْضٌ", audioStr: "بَغَضَ ، يَبْغَضُ ، بُغْضٌ" },
+            { th: "ปรารถนา", past: "رَغِبَ", present: "يَرْغَبُ", masdar: "رَغْبَةٌ", audioStr: "رَغِبَ ، يَرْغَبُ ، رَغْبَةٌ" },
+            { th: "ปฏิเสธ", past: "رَفَضَ", present: "يَرْفُضُ", masdar: "رَفْضٌ", audioStr: "رَفَضَ ، يَرْفُضُ ، رَفْضٌ" },
+            { th: "ปฏิเสธศาสนา, เนรคุณ", past: "كَفَرَ", present: "يَكْفُرُ", masdar: "كُفْرٌ", audioStr: "كَفَرَ ، يَكْفُرُ ، كُفْرٌ" },
+            { th: "สั่งใช้", past: "أَمَرَ", present: "يَأْمُرُ", masdar: "أَمْرٌ", audioStr: "أَمَرَ ، يَأْمُرُ ، أَمْرٌ" },
+            { th: "ห้าม", past: "نَهَى", present: "يَنْهَى", masdar: "نَهْيٌ", audioStr: "نَهَى ، يَنْهَى ، نَهْيٌ" },
+            { th: "ฟุ้งกระจาย", past: "ضَاعَ", present: "يَضُوعُ", masdar: "ضَوْعٌ", audioStr: "ضَاعَ ، يَضُوعُ ، ضَوْعٌ" },
+            { th: "สูญหาย", past: "ضَاعَ", present: "يَضِيعُ", masdar: "ضَيَاعٌ", audioStr: "ضَاعَ ، يَضِيعُ ، ضَيَاعٌ" },
+            { th: "แสวงหา", past: "طَلَبَ", present: "يَطْلُبُ", masdar: "طَلَبٌ", audioStr: "طَلَبَ ، يَطْلُبُ ، طَلَبٌ" },
+            { th: "ค้นหา", past: "بَحَثَ", present: "يَبْحَثُ", masdar: "بَحْثٌ", audioStr: "بَحَثَ ، يَبْحَثُ ، بَحْثٌ" },
+            { th: "พบเจอ", past: "وَجَدَ", present: "يَجِدُ", masdar: "وُجُودٌ", audioStr: "وَجَدَ ، يَجِدُ ، وُجُودٌ" },
+            { th: "โต้ตอบ", past: "رَدَّ", present: "يَرُدُّ", masdar: "رَدٌّ", audioStr: "رَدَّ ، يَرُدُّ ، رَدٌّ" },
+            { th: "ปลูก", past: "غَرَسَ", present: "يَغْرِسُ", masdar: "غَرْسٌ", audioStr: "غَرَسَ ، يَغْرِسُ ، غَرْسٌ" },
+            { th: "รดน้ำ", past: "رَشَّ", present: "يَرُشُّ", masdar: "رَشٌّ", audioStr: "رَشَّ ، يَرُشُّ ، رَشٌّ" },
+            { th: "เด็ด", past: "قَطَفَ", present: "يَقْطِفُ", masdar: "قَطْفٌ", audioStr: "قَطَفَ ، يَقْطِفُ ، قَطْفٌ" },
+            { th: "ตัด", past: "قَطَعَ", present: "يَقْطَعُ", masdar: "قَطْعٌ", audioStr: "قَطَعَ ، يَقْطَعُ ، قَطْعٌ" },
+            { th: "เก็บเกี่ยว", past: "حَصَدَ", present: "يَحْصُدُ", masdar: "حَصَادٌ", audioStr: "حَصَدَ ، يَحْصُدُ ، حَصَادٌ" },
+            { th: "ทำอาหาร", past: "طَبَخَ", present: "يَطْبُخُ", masdar: "طَبْخٌ", audioStr: "طَبَخَ ، يَطْبُخُ ، طَبْخٌ" },
+            { th: "ต้ม", past: "سَلَقَ", present: "يَسْلُقُ", masdar: "سَلْقٌ", audioStr: "سَلَقَ ، يَسْلُقُ ، سَلْقٌ" },
+            { th: "ทอด", past: "قَلَى", present: "يَقْلِي", masdar: "قَلْيٌ", audioStr: "قَلَى ، يَقْلِي ، قَلْيٌ" },
+            { th: "ปิ้งย่าง", past: "شَوَى", present: "يَشْوِي", masdar: "شَيٌّ", audioStr: "شَوَى ، يَشْوِي ، شَيٌّ" },
+            { th: "รีด, นาบ", past: "كَوَى", present: "يَكْوِي", masdar: "كَيٌّ", audioStr: "كَوَى ، يَكْوِي ، كَيٌّ" },
+            { th: "ขว้าง", past: "رَمَى", present: "يَرْمِي", masdar: "رَمْيٌ", audioStr: "رَمَى ، يَرْمِي ، رَمْيٌ" },
+            { th: "เท", past: "صَبَّ", present: "يَصُبُّ", masdar: "صَبٌّ", audioStr: "صَبَّ ، يَصُبُّ ، صَبٌّ" },
+            { th: "เพิ่ม", past: "زَادَ", present: "يَزِيدُ", masdar: "زِيَادَةٌ", audioStr: "زَادَ ، يَزِيدُ ، زِيَادَةٌ" },
+            { th: "หิว", past: "جَاعَ", present: "يَجُوعُ", masdar: "جُوعٌ", audioStr: "جَاعَ ، يَجُوعُ ، جُوعٌ" },
+            { th: "อิ่ม", past: "شَبِعَ", present: "يَشْبَعُ", masdar: "شِبَعٌ", audioStr: "شَبِعَ ، يَشْبَعُ ، شِبَعٌ" },
+            { th: "ขาย", past: "بَاعَ", present: "يَبِيعُ", masdar: "بَيْعٌ", audioStr: "بَاعَ ، يَبِيعُ ، بَيْعٌ" },
+            { th: "กู้, ยืม", past: "قَرَضَ", present: "يَقْرِضُ", masdar: "قَرْضٌ", audioStr: "قَرَضَ ، يَقْرِضُ ، قَرْضٌ" },
+            { th: "ขโมย", past: "سَرَقَ", present: "يَسْرِقُ", masdar: "سَرِقَةٌ", audioStr: "سَرَقَ ، يَسْرِقُ ، سَرِقَةٌ" },
+            { th: "ทุบ, ตี", past: "ضَرَبَ", present: "يَضْرِبُ", masdar: "ضَرْبٌ", audioStr: "ضَرَبَ ، يَضْرِبُ ، ضَرْبٌ" },
+            { th: "ชน", past: "صَدَمَ", present: "يَصْدِمُ", masdar: "صَدْمٌ", audioStr: "صَدَمَ ، يَصْدِمُ ، صَدْمٌ" },
+            { th: "ครอบครอง", past: "مَلَكَ", present: "يَمْلِكُ", masdar: "مِلْكٌ", audioStr: "مَلَكَ ، يَمْلِكُ ، مِلْكٌ" },
+            { th: "ช่วยเหลือ", past: "نَصَرَ", present: "يَنْصُرُ", masdar: "نَصْرٌ", audioStr: "نَصَرَ ، يَنْصُرُ ، نَصْرٌ" },
+            { th: "เป็นพยาน, ยืนยัน", past: "شَهِدَ", present: "يَشْهَدُ", masdar: "شَهَادَةٌ", audioStr: "شَهِدَ ، يَشْهَدُ ، شَهَادَةٌ" },
+            { th: "ถึง", past: "وَصَلَ", present: "يَصِلُ", masdar: "وُصُولٌ", audioStr: "وَصَلَ ، يَصِلُ ، وُصُولٌ" },
+            { th: "บรรลุถึง", past: "بَلَغَ", present: "يَبْلُغُ", masdar: "بُلُوغٌ", audioStr: "بَلَغَ ، يَبْلُغُ ، بُلُوغٌ" },
+            { th: "ด่าทอ", past: "سَبَّ", present: "يَسُبُّ", masdar: "سَبٌّ", audioStr: "سَبَّ ، يَسُبُّ ، سَبٌّ" },
+            { th: "ด่า", past: "شَتَمَ", present: "يَشْتِمُ", masdar: "شَتْمٌ", audioStr: "شَتَمَ ، يَشْتِمُ ، شَتْمٌ" },
+            { th: "ทิ้ง", past: "تَرَكَ", present: "يَتْرُكُ", masdar: "تَرْكٌ", audioStr: "تَرَكَ ، يَتْرُكُ ، تَرْكٌ" },
+            { th: "กราบ", past: "سَجَدَ", present: "يَسْجُدُ", masdar: "سُجُودٌ", audioStr: "سَجَدَ ، يَسْجُدُ ، سُجُودٌ" },
+            { th: "เคารพบูชา", past: "عَبَدَ", present: "يَعْبُدُ", masdar: "عِبَادَةٌ", audioStr: "عَبَدَ ، يَعْبُدُ ، عِبَادَةٌ" },
+            { th: "มั่นคง", past: "ثَبَتَ", present: "يَثْبُتُ", masdar: "ثُبُوتٌ", audioStr: "ثَبَتَ ، يَثْبُتُ ، ثُبُوتٌ" },
+            { th: "หัวเราะเสียงดัง", past: "قَهْقَهَ", present: "يُقَهْقِهُ", masdar: "قَهْقَهَةٌ", audioStr: "قَهْقَهَ ، يُقَهْقِهُ ، قَهْقَهَةٌ" },
+            { th: "กระจาย, ทำให้ยุ่งเหยิง", past: "بَعْثَرَ", present: "يُبَعْثِرُ", masdar: "بَعْثَرَةٌ", audioStr: "بَعْثَرَ ، يُبَعْثِرُ ، بَعْثَرَةٌ" },
+            { th: "ประพฤติตัวไม่ดี", past: "عَرْبَدَ", present: "يُعَرْبِدُ", masdar: "عَرْبَدَةٌ", audioStr: "عَرْبَدَ ، يُعَرْبِدُ ، عَرْبَدَةٌ" },
+            { th: "แปล", past: "تَرْجَمَ", present: "يُتَرْجِمُ", masdar: "تَرْجَمَةٌ", audioStr: "تَرْجَمَ ، يُتَرْجِمُ ، تَرْجَمَةٌ" },
+            { th: "ออกแบบ, วางแผน", past: "هَنْدَسَ", present: "يُهَنْدِسُ", masdar: "هَنْدَسَةٌ", audioStr: "هَنْدَسَ ، يُهَنْدِسُ ، هَنْدَسَةٌ" },
+            { th: "ร่อน (ตะแกรง), คัดเลือก", past: "غَرْبَلَ", present: "يُغَرْبِلُ", masdar: "غَرْبَلَةٌ", audioStr: "غَرْبَلَ ، يُغَرْبِلُ ، غَرْبَلَةٌ" },
+            { th: "กระซิบ, ยุยง", past: "وَسْوَسَ", present: "يُوَسْوِسُ", masdar: "وَسْوَسَةٌ", audioStr: "وَسْوَسَ ، يُوَسْوِسُ ، وَسْوَسَةٌ" },
+            { th: "ทำให้สั่นสะเทือน, เขย่า", past: "زَلْزَلَ", present: "يُزَلْزِلُ", masdar: "زَلْزَلَةٌ", audioStr: "زَلْزَلَ ، يُزَلْزِلُ ، زَلْزَلَةٌ" },
+            { th: "เลื่อน, ขยับ", past: "زَحْزَحَ", present: "يُزَحْزِحُ", masdar: "زَحْزَحَةٌ", audioStr: "زَحْزَحَ ، يُزَحْزِحُ ، زَحْزَحَةٌ" },
+            { th: "พูดเรื่องไร้สาระ", past: "سَفْسَفَ", present: "يُسَفْسِفُ", masdar: "سَفْسَفَةٌ", audioStr: "سَفْسَفَ ، يُسَفْسِفُ ، سَفْسَفَةٌ" },
+            { th: "กลิ้ง", past: "دَحْرَجَ", present: "يُدَحْرِجُ", masdar: "دَحْرَجَةٌ", audioStr: "دَحْرَجَ ، يُدَحْرِجُ ، دَحْرَجَةٌ" },
+            { th: "บรรเทา, เยียวยา", past: "بَلْسَمَ", present: "يُبَلْسِمُ", masdar: "بَلْسَمَةٌ", audioStr: "بَلْسَمَ ، يُبَلْسِمُ ، بَلْسَمَةٌ" },
+            { th: "ทำให้แข็งตัว", past: "جَلْمَدَ", present: "يُجَلْمِدُ", masdar: "جَلْمَدَةٌ", audioStr: "جَلْمَدَ ، يُجَلْمِدُ ، جَلْمَدَةٌ" },
+            { th: "เปิดเผยความจริง", past: "خَضْخَضَ", present: "يُخَضْخِضُ", masdar: "خَضْخَضَةٌ", audioStr: "خَضْخَضَ ، يُخَضْخِضُ ، خَضْخَضَةٌ" },
+            { th: "ขีดเขียนยุ่งๆ", past: "خَرْبَشَ", present: "يُخَرْبِشُ", masdar: "خَرْبَشَةٌ", audioStr: "خَرْبَشَ ، يُخَرْبِشُ ، خَرْبَشَةٌ" },
+            { th: "ส่งเสียงต่ำๆ, พึมพำ", past: "دَمْدَمَ", present: "يُدَمْدِمُ", masdar: "دَمْدَمَةٌ", audioStr: "دَمْدَمَ ، يُدَمْدِمُ ، دَمْدَمَةٌ" },
+            { th: "ซ่อมแซมเล็กน้อย", past: "رَمْرَمَ", present: "يُرَمْرِمُ", masdar: "رَمْرَمَةٌ", audioStr: "رَمْرَمَ ، يُرَمْرِمُ ، رَمْرَمَةٌ" },
+            { th: "คำราม, ส่งเสียงดัง", past: "زَمْجَرَ", present: "يُزَمْجِرُ", masdar: "زَمْجَرَةٌ", audioStr: "زَمْجَرَ ، يُزَمْجِرُ ، زَمْجَرَةٌ" },
+            { th: "พูดเร็วๆ ไม่ชัดเจน", past: "سَرْسَرَ", present: "يُسَرْسِرُ", masdar: "سَرْسَرَةٌ", audioStr: "سَرْسَرَ ، يُسَرْسِرُ ، سَرْسَرَةٌ" },
+            { th: "ส่งเสียงกังวาน", past: "صَلْصَلَ", present: "يُصَلْصِلُ", masdar: "صَلْصَلَةٌ", audioStr: "صَلْصَلَ ، يُصَلْصِلُ ، صَلْصَلَةٌ" },
+            { th: "ทำให้สงบ, มั่นใจ", past: "طَمْأَنَ", present: "يُطَمْئِنُ", masdar: "طَمْأَنَةٌ", audioStr: "طَمْأَنَ ، يُطَمْئِنُ ، طَمْأَنَةٌ" },
+            { th: "กระพือปีก, สั่น", past: "فَرْفَرَ", present: "يُفَرْفِرُ", masdar: "فَرْفَرَةٌ", audioStr: "فَرْفَرَ ، يُفَرْفِرُ ، فَرْفَرَةٌ" },
+            { th: "ส่งเสียงร้อง (ท้องร้อง)", past: "قَرْقَرَ", present: "يُقَرْقِرُ", masdar: "قَرْقَرَةٌ", audioStr: "قَرْقَرَ ، يُقَرْقِرُ ، قَرْقَرَةٌ" },
+            { th: "หัวเราะเสียงดัง", past: "كَرْكَرَ", present: "يُكَرْكِرُ", masdar: "كَرْكَرَةٌ", audioStr: "كَرْكَرَ ، يُكَرْكِرُ ، كَرْكَرَةٌ" },
+            { th: "พูดพล่าม", past: "لَغْلَغَ", present: "يُلَغْلِغُ", masdar: "لَغْلَغَةٌ", audioStr: "لَغْلَغَ ، يُلَغْلِغُ ، لَغْلَغَةٌ" },
+            { th: "บ่นพึมพำ", past: "مَرْمَرَ", present: "يُمَرْمِرُ", masdar: "مَرْمَرَةٌ", audioStr: "مَرْمَرَ ، يُمَرْمِرُ ، مَرْمَرَةٌ" },
+            { th: "วาดลวดลายเล็กๆ", past: "نَمْنَمَ", present: "يُنَمْنِمُ", masdar: "نَمْنَمَةٌ", audioStr: "نَمْنَمَ ، يُنَمْنِمُ ، نَمْنَمَةٌ" },
+            { th: "ฮัมเพลง", past: "هَمْهَمَ", present: "يُهَمْهِمُ", masdar: "هَمْهَمَةٌ", audioStr: "هَمْهَمَ ، يُهَمْهِمُ ، هَمْهَمَةٌ" },
+            { th: "สาบาน, ให้คำมั่น", past: "يَمْيَمَ", present: "يُيَمْيِمُ", masdar: "يَمْيَمَةٌ", audioStr: "يَمْيَمَ ، يُيَمْيِمُ ، يَمْيَمَةٌ" },
+            { th: "เดินค้อมๆ มองๆ", past: "عَسْعَسَ", present: "يُعَسْعِسُ", masdar: "عَسْعَسَةٌ", audioStr: "عَسْعَسَ ، يُعَسْعِسُ ، عَسْعَسَةٌ" },
+            { th: "คิดเชิงปรัชญา", past: "فَلْسَفَ", present: "يُفَلْسِفُ", masdar: "فَلْسَفَةٌ", audioStr: "فَلْسَفَ ، يُفَلْسِفُ ، فَلْسَفَةٌ" },
+            { th: "คลอน, สั่นคลอน", past: "خَلْخَلَ", present: "يُخَلْخِلُ", masdar: "خَلْخَلَةٌ", audioStr: "خَلْخَلَ ، يُخَلْخِلُ ، خَلْخَلَةٌ" },
+            { th: "ขุดสนามเพลาะ", past: "خَنْدَقَ", present: "يُخَنْدِقُ", masdar: "خَنْدَقَةٌ", audioStr: "خَنْدَقَ ، يُخَنْدِقُ ، خَنْدَقَةٌ" },
+            { th: "เต้น, กระโดด", past: "دَبْدَبَ", present: "يُدَبْدِبُ", masdar: "دَبْدَبَةٌ", audioStr: "دَبْدَبَ ، يُدَبْدِبُ ، دَبْدَبَةٌ" },
+            { th: "โบกสะบัดพริ้ว", past: "رَفْرَفَ", present: "يُرَفْرِفُ", masdar: "رَفْرَفَةٌ", audioStr: "رَفْرَفَ ، يُرَفْرِفُ ، رَفْرَفَةٌ" },
+            { th: "ทำให้สั่นคลอน", past: "زَعْزَعَ", present: "يُزَعْزِعُ", masdar: "زَعْزَعَةٌ", audioStr: "زَعْزَعَ ، يُزَعْزِعُ ، زَعْزَعَةٌ" },
+            { th: "ผูกเป็นโซ่, ต่อเนื่อง", past: "سَلْسَلَ", present: "يُسَلْسِلُ", masdar: "سَلْسَلَةٌ", audioStr: "سَلْسَلَ ، يُسَلْسِلُ ، سَلْسَلَةٌ" },
+            { th: "ดมกลิ่นเบาๆ", past: "شَمْشَمَ", present: "يُشَمْشِمُ", masdar: "شَمْشَمَةٌ", audioStr: "شَمْشَمَ ، يُشَمْشِمُ ، شَمْشَمَةٌ" },
+            { th: "ส่งเสียงดังเสียดสี", past: "صَرْصَرَ", present: "يُصَرْصِرُ", masdar: "صَرْصَرَةٌ", audioStr: "صَرْصَرَ ، يُصَرْصِرُ ، صَرْصَرَةٌ" },
+            { th: "กลั้วคอ, อมน้ำ", past: "ضَمْضَمَ", present: "يُضَمْضِمُ", masdar: "ضَمْضَمَةٌ", audioStr: "ضَمْضَمَ ، يُضَمْضِمُ ، ضَمْضَمَةٌ" },
+            { th: "ตบเบาๆ, ลูบ", past: "طَبْطَبَ", present: "يُطَبْطِبُ", masdar: "طَبْطَبَةٌ", audioStr: "طَبْطَبَ ، يُطَبْطِبُ ، طَبْطَبَةٌ" },
+            { th: "ทำให้สั่น, ไม่มั่นคง", past: "عَزْعَزَ", present: "يُعَزْعِزُ", masdar: "عَزْعَزَةٌ", audioStr: "عَزْعَزَ ، يُعَزْعِزُ ، عَزْعَزَةٌ" },
+            { th: "กลั้วคอ (เสียงน้ำ)", past: "غَرْغَرَ", present: "يُغَرْغِرُ", masdar: "غَرْغَرَةٌ", audioStr: "غَرْغَرَ ، يُغَرْغِرُ ، غَرْغَرَةٌ" },
+            { th: "ทำให้สดชื่น, ร่าเริง", past: "فَرْفَشَ", present: "يُفَرْفِشُ", masdar: "فَرْفَشَةٌ", audioStr: "فَرْفَشَ ، يُفَرْفِشُ ، فَرْفَشَةٌ" },
+            { th: "ส่งเสียงดัง, บ่นพึมพำ", past: "قَمْقَمَ", present: "يُقَمْقِمُ", masdar: "قَمْقَمَةٌ", audioStr: "قَمْقَمَ ، يُقَمْقِمُ ، قَمْقَمَةٌ" },
+            { th: "กดทับ, หนักใจ", past: "كَلْكَلَ", present: "يُكَلْكِلُ", masdar: "كَلْكَلَةٌ", audioStr: "كَلْكَلَ ، يُكَلْكِلُ ، كَلْكَلَةٌ" },
+            { th: "รวบรวม, เก็บ", past: "لَمْلَمَ", present: "يُلَمْلِمُ", masdar: "لَمْلَمَةٌ", audioStr: "لَمْلَمَ ، يُلَمْلِمُ ، لَمْلَمَةٌ" },
+            { th: "พูดไม่ชัด, อู้อี้", past: "مَهْمَهَ", present: "يُمَهْمِهُ", masdar: "مَهْمَهَةٌ", audioStr: "مَهْمَهَ ، يُمَهْمِهُ ، مَهْمَهَةٌ" },
+            { th: "ร้องเพลงเบาๆ", past: "نَزْنَزَ", present: "يُنَزْنِزُ", masdar: "نَزْنَزَةٌ", audioStr: "نَزْنَزَ ، يُنَزْنِزُ ، نَزْنَزَةٌ" },
+            { th: "หัวเราะเบาๆ, สั่น", past: "هَزْهَزَ", present: "يُهَزْهِزُ", masdar: "هَزْهَزَةٌ", audioStr: "هَزْهَزَ ، يُهَزْهِزُ ، هَزْهَزَةٌ" },
+            { th: "ปฏิบัติตาม", past: "تَابَعَ", present: "يُتَابِعُ", masdar: "مُتَابَعَةٌ", audioStr: "تَابَعَ ، يُتَابِعُ ، مُتَابَعَةٌ" },
+            { th: "ต่อสู้", past: "جَاهَدَ", present: "يُجَاهِدُ", masdar: "مُجَاهَدَةٌ", audioStr: "جَاهَدَ ، يُجَاهِدُ ، مُجَاهَدَةٌ" },
+            { th: "พยายาม", past: "حَاوَلَ", present: "يُحَاوِلُ", masdar: "مُحَاوَلَةٌ", audioStr: "حَاوَلَ ، يُحَاوِلُ ، مُحَاوَلَةٌ" },
+            { th: "สอบสวน, คิดบัญชี", past: "حَاسَبَ", present: "يُحَاسِبُ", masdar: "مُحَاسَبَةٌ", audioStr: "حَاسَبَ ، يُحَاسِبُ ، مُحَاسَبَةٌ" },
+            { th: "ทบทวน", past: "ذَاكَرَ", present: "يُذَاكِرُ", masdar: "مُذَاكَرَةٌ", audioStr: "ذَاكَرَ ، يُذَاكِرُ ، مُذَاكَرَةٌ" },
+            { th: "ทบทวน", past: "رَاجَعَ", present: "يُرَاجِعُ", masdar: "مُرَاجَعَةٌ", audioStr: "رَاجَعَ ، يُرَاجِعُ ، مُرَاجَعَةٌ" },
+            { th: "เดินทาง", past: "سَافَرَ", present: "يُسَافِرُ", masdar: "سَفَرٌ", audioStr: "سَافَرَ ، يُسَافِرُ ، سَفَرٌ" },
+            { th: "มีหุ้นส่วน", past: "سَاهَمَ", present: "يُسَاهِمُ", masdar: "مُسَاهَمَةٌ", audioStr: "سَاهَمَ ، يُسَاهِمُ ، مُسَاهَمَةٌ" },
+            { th: "ประชุมกัน, ปรึกษา", past: "شَاوَرَ", present: "يُشَاوِرُ", masdar: "مُشَاوَرَةٌ", audioStr: "شَاوَرَ ، يُشَاوِرُ ، مُشَاوَرَةٌ" },
+            { th: "ดู, มอง", past: "شَاهَدَ", present: "يُشَاهِدُ", masdar: "مُشَاهَدَةٌ", audioStr: "شَاهَدَ ، يُشَاهِدُ ، مُشَاهَدَةٌ" },
+            { th: "ปฏิสัมพันธ์", past: "عَامَلَ", present: "يُعَامِلُ", masdar: "مُعَامَلَةٌ", audioStr: "عَامَلَ ، يُعَامِلُ ، مُعَامَلَةٌ" },
+            { th: "พบปะ", past: "قَابَلَ", present: "يُقَابِلُ", masdar: "مُقَابَلَةٌ", audioStr: "قَابَلَ ، يُقَابِلُ ، مُقَابَلَةٌ" },
+            { th: "เปรียบเทียบ", past: "قَارَنَ", present: "يُقَارِنُ", masdar: "مُقَارَنَةٌ", audioStr: "قَارَنَ ، يُقَارِنُ ، مُقَارَنَةٌ" },
+            { th: "ต่อต้าน", past: "قَاوَمَ", present: "يُقَاوِمُ", masdar: "مُقَاوَمَةٌ", audioStr: "قَاوَمَ ، يُقَاوِمُ ، مُقَاوَمَةٌ" },
+            { th: "สู้รบ", past: "قَاتَلَ", present: "يُقَاتِلُ", masdar: "مُقَاتَلَةٌ", audioStr: "قَاتَلَ ، يُقَاتِلُ ، مُقَاتَلَةٌ" },
+            { th: "แข่งขัน, ประลอง", past: "سَابَقَ", present: "يُسَابِقُ", masdar: "مُسَابَقَةٌ", audioStr: "سَابَقَ ، يُسَابِقُ ، مُسَابَقَةٌ" },
+            { th: "มีส่วนร่วม", past: "شَارَكَ", present: "يُشَارِكُ", masdar: "مُشَارَكَةٌ", audioStr: "شَارَكَ ، يُشَارِكُ ، مُشَارَكَةٌ" },
+            { th: "แข่งขัน", past: "نَافَسَ", present: "يُنَافِسُ", masdar: "مُنَافَسَةٌ", audioStr: "نَافَسَ ، يُنَافِسُ ، مُنَافَسَةٌ" },
+            { th: "อภิปราย", past: "نَاقَشَ", present: "يُنَاقِشُ", masdar: "مُنَاقَشَةٌ", audioStr: "نَاقَشَ ، يُنَاقِشُ ، مُنَاقَشَةٌ" },
+            { th: "เหมาะสม", past: "نَاسَبَ", present: "يُنَاسِبُ", masdar: "مُنَاسَبَةٌ", audioStr: "نَاسَبَ ، يُنَاسِبُ ، مُنَاسَبَةٌ" },
+            { th: "เผชิญหน้า", past: "وَاجَهَ", present: "يُوَاجِهُ", masdar: "مُوَاجَهَةٌ", audioStr: "وَاجَهَ ، يُوَاجِهُ ، مُوَاجَهَةٌ" },
+            { th: "ร่วมเพศ", past: "جَامَعَ", present: "يُجَامِعُ", masdar: "جِمَاعٌ", audioStr: "جَامَعَ ، يُجَامِعُ ، جِمَاعٌ" },
+            { th: "ประจบ, อวย", past: "جَامَلَ", present: "يُجَامِلُ", masdar: "مُجَامَلَةٌ", audioStr: "جَامَلَ ، يُجَامِلُ ، مُجَامَلَةٌ" },
+            { th: "แยกจากกัน", past: "فَارَقَ", present: "يُفَارِقُ", masdar: "مُفَارَقَةٌ", audioStr: "فَارَقَ ، يُفَارِقُ ، مُفَارَقَةٌ" },
+            { th: "ละหมาด", past: "صَلَّى", present: "يُصَلِّي", masdar: "صَلَاةٌ", audioStr: "صَلَّى ، يُصَلِّي ، صَلَاةٌ" },
+            { th: "คิด", past: "فَكَّرَ", present: "يُفَكِّرُ", masdar: "تَفْكِيرٌ", audioStr: "فَكَّرَ ، يُفَكِّرُ ، تَفْكِيرٌ" },
+            { th: "ให้สลาม", past: "سَلَّمَ", present: "يُسَلِّمُ", masdar: "تَسْلِيمٌ", audioStr: "سَلَّمَ ، يُسَلِّمُ ، تَسْلِيمٌ" },
+            { th: "อำลา", past: "وَدَّعَ", present: "يُوَدِّعُ", masdar: "تَوْدِيعٌ", audioStr: "وَدَّعَ ، يُوَدِّعُ ، تَوْدِيعٌ" },
+            { th: "เซ็นชื่อ", past: "وَقَّعَ", present: "يُوَقِّعُ", masdar: "تَوْقِيعٌ", audioStr: "وَقَّعَ ، يُوَقِّعُ ، تَوْقِيعٌ" },
+            { th: "ลงทะเบียน", past: "سَجَّلَ", present: "يُسَجِّلُ", masdar: "تَسْجِيلٌ", audioStr: "سَجَّلَ ، يُسَجِّلُ ، تَسْجِيلٌ" },
+            { th: "ส่ง", past: "أَرْسَلَ", present: "يُرْسِلُ", masdar: "إِرْسَالٌ", audioStr: "أَرْسَلَ ، يُرْسِلُ ، إِرْسَالٌ" },
+            { th: "มอบให้", past: "أَعْطَى", present: "يُعْطِي", masdar: "إِعْطَاءٌ", audioStr: "أَعْطَى ، يُعْطِي ، إِعْطَاءٌ" },
+            { th: "ฉีก", past: "مَزَّقَ", present: "يُمَزِّقُ", masdar: "تَمْزِيقٌ", audioStr: "مَزَّقَ ، يُمَزِّقُ ، تَمْزِيقٌ" },
+            { th: "ทำให้เคลื่อนไหว", past: "حَرَّكَ", present: "يُحَرِّكُ", masdar: "تَحْرِيكٌ", audioStr: "حَرَّكَ ، يُحَرِّكُ ، تَحْرِيكٌ" },
+            { th: "ฟุ่มเฟือย", past: "أَسْرَفَ", present: "يُسْرِفُ", masdar: "إِسْرَافٌ", audioStr: "أَسْرَفَ ، يُسْرِفُ ، إِسْرَافٌ" },
+            { th: "ใช้จ่าย", past: "أَنْفَقَ", present: "يُنْفِقُ", masdar: "إِنْفَاقٌ", audioStr: "أَنْفَقَ ، يُنْفِقُ ، إِنْفَاقٌ" },
+            { th: "ตอบ", past: "أَجَابَ", present: "يُجِيبُ", masdar: "إِجَابَةٌ", audioStr: "أَجَابَ ، يُجِيبُ ، إِجَابَةٌ" },
+            { th: "เห็นตรงกัน", past: "أَجْمَعَ", present: "يُجْمِعُ", masdar: "إِجْمَاعٌ", audioStr: "أَجْمَعَ ، يُجْمِعُ ، إِجْمَاعٌ" },
+            { th: "ชี้แนะ", past: "أَرْشَدَ", present: "يُرْشِدُ", masdar: "إِرْشَادٌ", audioStr: "أَرْشَدَ ، يُرْشِدُ ، إِرْشَادٌ" },
+            { th: "ชี้", past: "أَشَارَ", present: "يُشِيرُ", masdar: "إِشَارَةٌ", audioStr: "أَشَارَ ، يُشِيرُ ، إِشَارَةٌ" },
+            { th: "ทำให้แพร่ออกไป", past: "أَفْشَى", present: "يُفْشِي", masdar: "إِفْشَاءٌ", audioStr: "أَفْشَى ، يُفْشِي ، إِفْشَاءٌ" },
+            { th: "ทำให้มาก", past: "أَكْثَرَ", present: "يُكْثِرُ", masdar: "إِكْثَارٌ", audioStr: "أَكْثَرَ ، يُكْثِرُ ، إِكْثَارٌ" },
+            { th: "ทำให้เสร็จสิ้น", past: "أَنْجَزَ", present: "يُنْجِزُ", masdar: "إِنْجَازٌ", audioStr: "أَنْجَزَ ، يُنْجِزُ ، إِنْجَازٌ" },
+            { th: "ทำให้เกิดขึ้น", past: "أَوْجَدَ", present: "يُوجِدُ", masdar: "إِيجَادٌ", audioStr: "أَوْجَدَ ، يُوجِدُ ، إِيجَادٌ" },
+            { th: "จุดไฟ", past: "أَوْقَدَ", present: "يُوقِدُ", masdar: "إِيقَادٌ", audioStr: "أَوْقَدَ ، يُوقِدُ ، إِيقَادٌ" },
+            { th: "ปลุกให้ตื่น", past: "أَيْقَظَ", present: "يُوقِظُ", masdar: "إِيقَاظٌ", audioStr: "أَيْقَظَ ، يُوقِظُ ، إِيقَاظٌ" },
+            { th: "ชี้แนะ, อธิบาย", past: "بَيَّنَ", present: "يُبَيِّنُ", masdar: "تَبْيِينٌ", audioStr: "بَيَّنَ ، يُبَيِّنُ ، تَبْيِينٌ" },
+            { th: "อธิบาย", past: "فَسَّرَ", present: "يُفَسِّرُ", masdar: "تَفْسِيرٌ", audioStr: "فَسَّرَ ، يُفَسِّرُ ، تَفْسِيرٌ" },
+            { th: "ทำให้เป็นหนึ่ง", past: "وَحَّدَ", present: "يُوَحِّدُ", masdar: "تَوْحِيدٌ", audioStr: "وَحَّدَ ، يُوَحِّدُ ، تَوْحِيدٌ" },
+            { th: "เลียนแบบ", past: "قَلَّدَ", present: "يُقَلِّدُ", masdar: "تَقْلِيدٌ", audioStr: "قَلَّدَ ، يُقَلِّدُ ، تَقْلِيدٌ" },
+            { th: "สอน", past: "عَلَّمَ", present: "يُعَلِّمُ", masdar: "تَعْلِيمٌ", audioStr: "عَلَّمَ ، يُعَلِّمُ ، تَعْلِيمٌ" },
+            { th: "บอก", past: "أَخْبَرَ", present: "يُخْبِرُ", masdar: "إِخْبَارٌ", audioStr: "أَخْبَرَ ، يُخْبِرُ ، إِخْبَارٌ" },
+            { th: "สาธิต, แสดง", past: "مَثَّلَ", present: "يُمَثِّلُ", masdar: "تَمْثِيلٌ", audioStr: "مَثَّلَ ، يُمَثِّلُ ، تَمْثِيلٌ" },
+            { th: "ตรวจสอบ", past: "فَتَّشَ", present: "يُفَتِّشُ", masdar: "تَفْتِيشٌ", audioStr: "فَتَّشَ ، يُفَتِّشُ ، تَفْتِيشٌ" },
+            { th: "เชื่อ", past: "صَدَّقَ", present: "يُصَدِّقُ", masdar: "تَصْدِيقٌ", audioStr: "صَدَّقَ ، يُصَدِّقُ ، تَصْدِيقٌ" },
+            { th: "รัก", past: "أَحَبَّ", present: "يُحِبُّ", masdar: "إِحْبَابٌ", audioStr: "أَحَبَّ ، يُحِبُّ ، إِحْبَابٌ" },
+            { th: "ต้องการ", past: "أَرَادَ", present: "يُرِيدُ", masdar: "إِرَادَةٌ", audioStr: "أَرَادَ ، يُرِيدُ ، إِرَادَةٌ" },
+            { th: "อ้างอิง", past: "أَحَالَ", present: "يُحِيلُ", masdar: "إِحَالَةٌ", audioStr: "أَحَالَ ، يُحِيلُ ، إِحَالَةٌ" },
+            { th: "ให้แสงสว่าง", past: "أَنَارَ", present: "يُنِيرُ", masdar: "إِنَارَةٌ", audioStr: "أَنَارَ ، يُنِيرُ ، إِنَارَةٌ" },
+            { th: "อยู่, พำนัก", past: "أَقَامَ", present: "يُقِيمُ", masdar: "إِقَامَةٌ", audioStr: "أَقَامَ ، يُقِيمُ ، إِقَامَةٌ" },
+            { th: "ให้ยืม", past: "أَعَارَ", present: "يُعِيرُ", masdar: "إِعَارَةٌ", audioStr: "أَعَارَ ، يُعِيرُ ، إِعَارَةٌ" },
+            { th: "ให้เข้า", past: "أَدْخَلَ", present: "يُدْخِلُ", masdar: "إِدْخَالٌ", audioStr: "أَدْخَلَ ، يُدْخِلُ ، إِدْخَالٌ" },
+            { th: "ให้ออก", past: "أَخْرَجَ", present: "يُخْرِجُ", masdar: "إِخْرَاجٌ", audioStr: "أَخْرَجَ ، يُخْرِجُ ، إِخْرَاجٌ" },
+            { th: "ทำให้ครบถ้วน", past: "أَكْمَلَ", present: "يُكْمِلُ", masdar: "إِكْمَالٌ", audioStr: "أَكْمَلَ ، يُكْمِلُ ، إِكْمَالٌ" },
+            { th: "ทำให้สมบูรณ์", past: "أَتَمَّ", present: "يُتِمُّ", masdar: "إِتْمَامٌ", audioStr: "أَتَمَّ ، يُتِمُّ ، إِتْمَامٌ" },
+            { th: "ก่อตั้ง, สร้าง", past: "أَنْشَأَ", present: "يُنْشِئُ", masdar: "إِنْشَاءٌ", audioStr: "أَنْشَأَ ، يُنْشِئُ ، إِنْشَاءٌ" },
+            { th: "ทำให้มีชีวิต", past: "أَحْيَا", present: "يُحْيِي", masdar: "إِحْيَاءٌ", audioStr: "أَحْيَا ، يُحْيِي ، إِحْيَاءٌ" },
+            { th: "ทำให้ตาย", past: "أَمَاتَ", present: "يُمِيتُ", masdar: "إِمَاتَةٌ", audioStr: "أَمَاتَ ، يُمِيتُ ، إِمَاتَةٌ" },
+            { th: "บริสุทธิ์ใจ", past: "أَخْلَصَ", present: "يُخْلِصُ", masdar: "إِخْلَاصٌ", audioStr: "أَخْلَصَ ، يُخْلِصُ ، إِخْلَاصٌ" },
+            { th: "ทำให้งอกเงย", past: "أَنْبَتَ", present: "يُنْبِتُ", masdar: "إِنْبَاتٌ", audioStr: "أَنْبَتَ ، يُنْبِتُ ، إِنْبَاتٌ" },
+            { th: "ยกเลิก", past: "أَلْغَى", present: "يُلْغِي", masdar: "إِلْغَاءٌ", audioStr: "أَلْغَى ، يُلْغِي ، إِلْغَاءٌ" },
+            { th: "สร้างความเสียหาย", past: "أَفْسَدَ", present: "يُفْسِدُ", masdar: "إِفْسَادٌ", audioStr: "أَفْسَدَ ، يُفْسِدُ ، إِفْسَادٌ" },
+            { th: "ประกาศ", past: "أَعْلَنَ", present: "يُعْلِنُ", masdar: "إِعْلَانٌ", audioStr: "أَعْلَنَ ، يُعْلِنُ ، إِعْلَانٌ" },
+            { th: "เผยแผ่", past: "بَلَّغَ", present: "يُبَلِّغُ", masdar: "تَبْلِيغٌ", audioStr: "بَلَّغَ ، يُبَلِّغُ ، تَبْلِيغٌ" },
+            { th: "แจ้ง", past: "أَبْلَغَ", present: "يُبْلِغُ", masdar: "إِبْلَاغٌ", audioStr: "أَبْلَغَ ، يُبْلِغُ ، إِبْلَاغٌ" },
+            { th: "คัดค้าน", past: "أَنْكَرَ", present: "يُنْكِرُ", masdar: "إِنْكَارٌ", audioStr: "أَنْكَرَ ، يُنْكِرُ ، إِنْكَارٌ" },
+            { th: "เลี้ยงอาหาร", past: "أَطْعَمَ", present: "يُطْعِمُ", masdar: "إِطْعَامٌ", audioStr: "أَطْعَمَ ، يُطْعِمُ ، إِطْعَامٌ" },
+            { th: "ทำความสะอาด", past: "نَظَّفَ", present: "يُنَظِّفُ", masdar: "تَنْظِيفٌ", audioStr: "نَظَّفَ ، يُنَظِّفُ ، تَنْظِيفٌ" },
+            { th: "ทำความสะอาด", past: "طَهَّرَ", present: "يُطَهِّرُ", masdar: "تَطْهِيرٌ", audioStr: "طَهَّرَ ، يُطَهِّرُ ، تَطْهِيرٌ" },
+            { th: "ทดแทน, แลกเปลี่ยน", past: "بَدَّلَ", present: "يُبَدِّلُ", masdar: "تَبْدِيلٌ", audioStr: "بَدَّلَ ، يُبَدِّلُ ، تَبْدِيلٌ" },
+            { th: "ผันแปร", past: "صَرَّفَ", present: "يُصَرِّفُ", masdar: "تَصْرِيفٌ", audioStr: "صَرَّفَ ، يُصَرِّفُ ، تَصْرِيفٌ" },
+            { th: "เปลี่ยนแปลง", past: "غَيَّرَ", present: "يُغَيِّرُ", masdar: "تَغْيِيرٌ", audioStr: "غَيَّرَ ، يُغَيِّرُ ، تَغْيِيرٌ" },
+            { th: "พูดคุย", past: "تَحَدَّثَ", present: "يَتَحَدَّثُ", masdar: "تَحَدُّثٌ", audioStr: "تَحَدَّثَ ، يَتَحَدَّثُ ، تَحَدُّثٌ" },
+            { th: "พูด", past: "تَكَلَّمَ", present: "يَتَكَلَّمُ", masdar: "تَكَلُّمٌ", audioStr: "تَكَلَّمَ ، يَتَكَلَّمُ ، تَكَلُّمٌ" },
+            { th: "เรียน", past: "تَعَلَّمَ", present: "يَتَعَلَّمُ", masdar: "تَعَلُّمٌ", audioStr: "تَعَلَّمَ ، يَتَعَلَّمُ ، تَعَلُّمٌ" },
+            { th: "อวดรู้", past: "تَعَالَمَ", present: "يَتَعَالَمُ", masdar: "تَعَالُمٌ", audioStr: "تَعَالَمَ ، يَتَعَالَمُ ، تَعَالُمٌ" },
+            { th: "แกล้งโง่", past: "تَجَاهَلَ", present: "يَتَجَاهَلُ", masdar: "تَجَاهُلٌ", audioStr: "تَجَاهَلَ ، يَتَجَاهَلُ ، تَجَاهُلٌ" },
+            { th: "ทะเลาะกัน", past: "تَخَاصَمَ", present: "يَتَخَاصَمُ", masdar: "تَخَاصُمٌ", audioStr: "تَخَاصَمَ ، يَتَخَاصَمُ ، تَخَاصُمٌ" },
+            { th: "ช่วยเหลือกัน", past: "تَعَاوَنَ", present: "يَتَعَاوَنُ", masdar: "تَعَاوُنٌ", audioStr: "تَعَاوَنَ ، يَتَعَاوَنُ ، تَعَاوُنٌ" },
+            { th: "สอบถามกัน", past: "تَسَاءَلَ", present: "يَتَسَاءَلُ", masdar: "تَسَاؤُلٌ", audioStr: "تَسَاءَلَ ، يَتَسَاءَلُ ، تَسَاؤُلٌ" },
+            { th: "เรียนรู้ทำความเข้าใจ", past: "تَفَقَّهَ", present: "يَتَفَقَّهُ", masdar: "تَفَقُّهٌ", audioStr: "تَفَقَّهَ ، يَتَفَقَّهُ ، تَفَقُّهٌ" },
+            { th: "ทำความเข้าใจ", past: "تَفَهَّمَ", present: "يَتَفَهَّمُ", masdar: "تَفَهُّمٌ", audioStr: "تَفَهَّمَ ، يَتَفَهَّمُ ، تَفَهُّمٌ" },
+            { th: "อาบน้ำละหมาด", past: "تَوَضَّأَ", present: "يَتَوَضَّأُ", masdar: "تَوَضُّؤٌ", audioStr: "تَوَضَّأَ ، يَتَوَضَّأُ ، تَوَضُّؤٌ" },
+            { th: "พิจารณา", past: "تَأَمَّلَ", present: "يَتَأَمَّلُ", masdar: "تَأَمُّلٌ", audioStr: "تَأَمَّلَ ، يَتَأَمَّلُ ، تَأَمُّلٌ" },
+            { th: "ใคร่ครวญ", past: "تَدَبَّرَ", present: "يَتَدَبَّرُ", masdar: "تَدَبُّرٌ", audioStr: "تَدَبَّرَ ، يَتَدَبَّرُ ، تَدَبُّرٌ" },
+            { th: "จินตนาการ, นึกภาพ", past: "تَصَوَّرَ", present: "يَتَصَوَّرُ", masdar: "تَصَوُّرٌ", audioStr: "تَصَوَّرَ ، يَتَصَوَّرُ ، تَصَوُّرٌ" },
+            { th: "มโน, จินตนาการ", past: "تَخَيَّلَ", present: "يَتَخَيَّلُ", masdar: "تَخَيُّلٌ", audioStr: "تَخَيَّلَ ، يَتَخَيَّلُ ، تَخَيُّلٌ" },
+            { th: "ถือโชคลาง", past: "تَطَيَّرَ", present: "يَتَطَيَّرُ", masdar: "تَطَيُّرٌ", audioStr: "تَطَيَّرَ ، يَتَطَيَّرُ ، تَطَيُّرٌ" },
+            { th: "เปิดหน้าหนังสือ", past: "تَصَفَّحَ", present: "يَتَصَفَّحُ", masdar: "تَصَفُّحٌ", audioStr: "تَصَفَّحَ ، يَتَصَفَّحُ ، تَصَفُّحٌ" },
+            { th: "เคลื่อนไหว", past: "تَحَرَّكَ", present: "يَتَحَرَّكُ", masdar: "تَحَرُّكٌ", audioStr: "تَحَرَّكَ ، يَتَحَرَّكُ ، تَحَرُّكٌ" },
+            { th: "บริจาค", past: "تَصَدَّقَ", present: "يَتَصَدَّقُ", masdar: "تَصَدُّقٌ", audioStr: "تَصَدَّقَ ، يَتَصَدَّقُ ، تَصَدُّقٌ" },
+            { th: "พิสูจน์ความจริง", past: "تَحَقَّقَ", present: "يَتَحَقَّقُ", masdar: "تَحَقُّقٌ", audioStr: "تَحَقَّقَ ، يَتَحَقَّقُ ، تَحَقُّقٌ" },
+            { th: "ถ่ายอุจจาระ", past: "تَغَوَّطَ", present: "يَتَغَوَّطُ", masdar: "تَغَوُّطٌ", audioStr: "تَغَوَّطَ ، يَتَغَوَّطُ ، تَغَوُّطٌ" },
+            { th: "ทำความสะอาด", past: "تَطَهَّرَ", present: "يَتَطَهَّرُ", masdar: "تَطَهُّرٌ", audioStr: "تَطَهَّرَ ، يَتَطَهَّرُ ، تَطَهُّرٌ" },
+            { th: "ทำความสะอาด", past: "تَنَظَّفَ", present: "يَتَنَظَّفُ", masdar: "تَنَظُّفٌ", audioStr: "تَنَظَّفَ ، يَتَنَظَّفُ ، تَنَظُّفٌ" },
+            { th: "ยิ้ม", past: "تَبَسَّمَ", present: "يَتَبَسَّمُ", masdar: "تَبَسُّمٌ", audioStr: "تَبَسَّمَ ، يَتَبَسَّمُ ، تَبَسُّمٌ" },
+            { th: "มั่นใจ", past: "تَيَقَّنَ", present: "يَتَيَقَّنُ", masdar: "تَيَقُّنٌ", audioStr: "تَيَقَّنَ ، يَتَيَقَّنُ ، تَيَقُّنٌ" },
+            { th: "นับถือศาสนา", past: "اِعْتَنَقَ", present: "يَعْتَنِقُ", masdar: "اِعْتِنَاقٌ", audioStr: "اِعْتَنَقَ ، يَعْتَنِقُ ، اِعْتِنَاقٌ" },
+            { th: "ปฏิบัติตาม", past: "اِمْتَثَلَ", present: "يَمْتَثِلُ", masdar: "اِمْتِثَالٌ", audioStr: "اِمْتَثَلَ ، يَمْتَثِلُ ، اِمْتِثَالٌ" },
+            { th: "ปฏิบัติตาม", past: "اِتَّبَعَ", present: "يَتَّبِعُ", masdar: "اِتِّبَاعٌ", audioStr: "اِتَّبَعَ ، يَتَّبِعُ ، اِتِّبَاعٌ" },
+            { th: "เห็นตรงกัน", past: "اِتَّفَقَ", present: "يَتَّفِقُ", masdar: "اِتِّفَاقٌ", audioStr: "اِتَّفَقَ ، يَتَّفِقُ ، اِتِّفَاقٌ" },
+            { th: "ซื้อ", past: "اِشْتَرَى", present: "يَشْتَرِي", masdar: "اِشْتِرَاءٌ", audioStr: "اِشْتَرَى ، يَشْتَرِي ، اِشْتِرَاءٌ" },
+            { th: "คัดเลือก", past: "اِخْتَارَ", present: "يَخْتَارُ", masdar: "اِخْتِيَارٌ", audioStr: "اِخْتَارَ ، يَخْتَارُ ، اِخْتِيَارٌ" },
+            { th: "คัดสรร, เลือก", past: "اِصْطَفَى", present: "يَصْطَفِي", masdar: "اِصْطِفَاءٌ", audioStr: "اِصْطَفَى ، يَصْطَفِي ، اِصْطِفَاءٌ" },
+            { th: "ติดต่อ", past: "اِتَّصَلَ", present: "يَتَّصِلُ", masdar: "اِتِّصَالٌ", audioStr: "اِتَّصَلَ ، يَتَّصِلُ ، اِتِّصَالٌ" },
+            { th: "กดขี่ข่มเหง", past: "اِضْطَهَدَ", present: "يَضْطَهِدُ", masdar: "اِضْطِهَادٌ", audioStr: "اِضْطَهَدَ ، يَضْطَهِدُ ، اِضْطِهَادٌ" },
+            { th: "ขยัน, วินิจฉัย", past: "اِجْتَهَدَ", present: "يَجْتَهِدُ", masdar: "اِجْتِهَادٌ", audioStr: "اِجْتَهَدَ ، يَجْتَهِدُ ، اِجْتِهَادٌ" },
+            { th: "ออกห่าง, หลีกเลี่ยง", past: "اِجْتَنَبَ", present: "يَجْتَنِبُ", masdar: "اِجْتِنَابٌ", audioStr: "اِجْتَنَبَ ، يَجْتَنِبُ ، اِجْتِنَابٌ" },
+            { th: "งด", past: "اِمْتَنَعَ", present: "يَمْتَنِعُ", masdar: "اِمْتِنَاعٌ", audioStr: "اِمْتَنَعَ ، يَمْتَنِعُ ، اِمْتِنَاعٌ" },
+            { th: "คิดค้นสิ่งใหม่", past: "اِبْتَكَرَ", present: "يَبْتَكِرُ", masdar: "اِبْتِكَارٌ", audioStr: "اِبْتَكَرَ ، يَبْتَكِرُ ، اِبْتِكَارٌ" },
+            { th: "ออกห่าง, ให้ไกล", past: "اِبْتَعَدَ", present: "يَبْتَعِدُ", masdar: "اِبْتِعَادٌ", audioStr: "اِبْتَعَدَ ، يَبْتَعِدُ ، اِبْتِعَادٌ" },
+            { th: "เข้าใกล้", past: "اِقْتَرَبَ", present: "يَقْتَرِبُ", masdar: "اِقْتِرَابٌ", audioStr: "اِقْتَرَبَ ، يَقْتَرِبُ ، اِقْتِرَابٌ" },
+            { th: "แสวงหา", past: "اِبْتَغَى", present: "يَبْتَغِي", masdar: "اِبْتِغَاءٌ", audioStr: "اِبْتَغَى ، يَبْتَغِي ، اِبْتِغَاءٌ" },
+            { th: "ประดิษฐ์", past: "اِخْتَرَعَ", present: "يَخْتَرِعُ", masdar: "اِخْتِرَاعٌ", audioStr: "اِخْتَرَعَ ، يَخْتَرِعُ ، اِخْتِرَاعٌ" },
+            { th: "อุตริ", past: "اِبْتَدَعَ", present: "يَبْتَدِعُ", masdar: "اِبْتِدَاعٌ", audioStr: "اِبْتَدَعَ ، يَبْتَدِعُ ، اِبْتِدَاعٌ" },
+            { th: "ล่าเหยื่อ", past: "اِفْتَرَسَ", present: "يَفْتَرِسُ", masdar: "اِفْتِرَاسٌ", audioStr: "اِفْتَرَسَ ، يَفْتَرِسُ ، اِفْتِرَاسٌ" },
+            { th: "ประชุม", past: "اِجْتَمَعَ", present: "يَجْتَمِعُ", masdar: "اِجْتِمَاعٌ", audioStr: "اِجْتَمَعَ ، يَجْتَمِعُ ، اِجْتِمَاعٌ" },
+            { th: "เห็นต่าง, แตกต่าง", past: "اِخْتَلَفَ", present: "يَخْتَلِفُ", masdar: "اِخْتِلَافٌ", audioStr: "اِخْتَلَفَ ، يَخْتَلِفُ ، اِخْتِلَافٌ" },
+            { th: "แตกแยก", past: "اِفْتَرَقَ", present: "يَفْتَرِقُ", masdar: "اِفْتِرَاقٌ", audioStr: "اِفْتَرَقَ ، يَفْتَرِقُ ، اِفْتِرَاقٌ" },
+            { th: "แตก หัก", past: "اِنْكَسَرَ", present: "يَنْكَسِرُ", masdar: "اِنْكِسَارٌ", audioStr: "اِنْكَسَرَ ، يَنْكَسِرُ ، اِنْكِسَارٌ" },
+            { th: "หันเห, คลาดเคลื่อน", past: "اِنْحَرَفَ", present: "يَنْحَرِفُ", masdar: "اِنْحِرَافٌ", audioStr: "اِنْحَرَفَ ، يَنْحَرِفُ ، اِنْحِرَافٌ" },
+            { th: "แยกย้ายไป, ผ่านพ้น", past: "اِنْصَرَفَ", present: "يَنْصَرِفُ", masdar: "اِنْصِرَافٌ", audioStr: "اِنْصَرَفَ ، يَنْصَرِفُ ، اِنْصِرَافٌ" },
+            { th: "แพร่กระจาย", past: "اِنْتَشَرَ", present: "يَنْتَشِرُ", masdar: "اِنْتِشَارٌ", audioStr: "اِنْتَشَرَ ، يَنْتَشِرُ ، اِنْتِشَارٌ" },
+            { th: "เคลื่อนย้าย", past: "اِنْتَقَلَ", present: "يَنْتَقِلُ", masdar: "اِنْتِقَالٌ", audioStr: "اِنْتَقَلَ ، يَنْتَقِلُ ، اِنْتِقَالٌ" },
+            { th: "อาบน้ำ", past: "اِغْتَسَلَ", present: "يَغْتَسِلُ", masdar: "اِغْتِسَالٌ", audioStr: "اِغْتَسَلَ ، يَغْتَسِلُ ، اِغْتِسَالٌ" },
+            { th: "พบปะกัน", past: "اِلْتَقَى", present: "يَلْتَقِي", masdar: "اِلْتِقَاءٌ", audioStr: "اِلْتَقَى ، يَلْتَقِي ، اِلْتِقَاءٌ" },
+            { th: "แผ่ขยาย, ยืดยาว", past: "اِمْتَدَّ", present: "يَمْتَدُّ", masdar: "اِمْتِدَادٌ", audioStr: "اِمْتَدَّ ، يَمْتَدُّ ، اِمْتِدَادٌ" },
+            { th: "สอบ", past: "اِخْتَبَرَ", present: "يَخْتَبِرُ", masdar: "اِخْتِبَارٌ", audioStr: "اِخْتَبَرَ ، يَخْتَبِرُ ، اِخْتِبَارٌ" },
+            { th: "สอบ", past: "اِمْتَحَنَ", present: "يَمْتَحِنُ", masdar: "اِمْتِحَانٌ", audioStr: "اِمْتَحَنَ ، يَمْتَحِنُ ، اِمْتِحَانٌ" },
+            { th: "ทดสอบ", past: "اِبْتَلَى", present: "يَبْتَلِي", masdar: "اِبْتِلَاءٌ", audioStr: "اِبْتَلَى ، يَبْتَلِي ، اِبْتِلَاءٌ" },
+            { th: "เริ่มต้น", past: "اِبْتَدَأَ", present: "يَبْتَدِئُ", masdar: "اِبْتِدَاءٌ", audioStr: "اِبْتَدَأَ ، يَبْتَدِئُ ، اِبْتِدَاءٌ" },
+            { th: "สิ้นสุด", past: "اِنْتَهَى", present: "يَنْتَهِي", masdar: "اِنْتِهَاءٌ", audioStr: "اِنْتَهَى ، يَنْتَهِي ، اِنْتِهَاءٌ" },
+            { th: "ตอบรับ", past: "اِسْتَجَابَ", present: "يَسْتَجِيبُ", masdar: "اِسْتِجَابَةٌ", audioStr: "اِسْتَجَابَ ، يَسْتَجِيبُ ، اِسْتِجَابَةٌ" },
+            { th: "รีบเร่ง", past: "اِسْتَعْجَلَ", present: "يَسْتَعْجِلُ", masdar: "اِسْتِعْجَالٌ", audioStr: "اِسْتَعْجَلَ ، يَسْتَعْجِلُ ، اِسْتِعْجَالٌ" },
+            { th: "อาบน้ำ", past: "اِسْتَحَمَّ", present: "يَسْتَحِمُّ", masdar: "اِسْتِحْمَامٌ", audioStr: "اِسْتَحَمَّ ، يَسْتَحِمُّ ، اِسْتِحْمَامٌ" },
+            { th: "ละหมาดอิสติคอเราะฮ์", past: "اِسْتَخَارَ", present: "يَسْتَخِيرُ", masdar: "اِسْتِخَارَةٌ", audioStr: "اِسْتَخَارَ ، يَسْتَخِيرُ ، اِسْتِخَارَةٌ" },
+            { th: "ใช้งาน", past: "اِسْتَخْدَمَ", present: "يَسْتَخْدِمُ", masdar: "اِسْتِخْدَامٌ", audioStr: "اِسْتَخْدَمَ ، يَسْتَخْدِمُ ، اِسْتِخْدَامٌ" },
+            { th: "นำออกมา", past: "اِسْتَخْرَجَ", present: "يَسْتَخْرِجُ", masdar: "اِسْتِخْرَاجٌ", audioStr: "اِسْتَخْرَجَ ، يَسْتَخْرِجُ ، اِسْتِخْرَاجٌ" },
+            { th: "ขอคำปรึกษา", past: "اِسْتَشَارَ", present: "يَسْتَشِيرُ", masdar: "اِسْتِشَارَةٌ", audioStr: "اِسْتَشَارَ ، يَسْتَشِيرُ ، اِسْتِشَارَةٌ" },
+            { th: "ปฏิรูป, ทำให้ดีขึ้น", past: "اِسْتَصْلَحَ", present: "يَسْتَصْلِحُ", masdar: "اِسْتِصْلَاحٌ", audioStr: "اِسْتَصْلَحَ ، يَسْتَصْلِحُ ، اِسْتِصْلَاحٌ" },
+            { th: "สามารถ", past: "اِسْتَطَاعَ", present: "يَسْتَطِيعُ", masdar: "اِسْتِطَاعَةٌ", audioStr: "اِسْتَطَاعَ ، يَسْتَطِيعُ ، اِسْتِطَاعَةٌ" },
+            { th: "ขอความช่วยเหลือ", past: "اِسْتَعَانَ", present: "يَسْتَعِينُ", masdar: "اِسْتِعَانَةٌ", audioStr: "اِسْتَعَانَ ، يَسْتَعِينُ ، اِسْتِعَانَةٌ" },
+            { th: "ขอความคุ้มครอง", past: "اِسْتَعَاذَ", present: "يَسْتَعِيذُ", masdar: "اِسْتِعَاذَةٌ", audioStr: "اِسْتَعَاذَ ، يَسْتَعِيذُ ، اِسْتِعَاذَةٌ" },
+            { th: "ขอยืม", past: "اِسْتَعَارَ", present: "يَسْتَعِيرُ", masdar: "اِسْتِعَارَةٌ", audioStr: "اِسْتَعَارَ ، يَسْتَعِيرُ ، اِسْتِعَارَةٌ" },
+            { th: "เตรียมพร้อม", past: "اِسْتَعَدَّ", present: "يَسْتَعِدُّ", masdar: "اِسْتِعْدَادٌ", audioStr: "اِسْتَعَدَّ ، يَسْتَعِدُّ ، اِسْتِعْدَادٌ" },
+            { th: "สอบถามรายละเอียด", past: "اِسْتَعْلَمَ", present: "يَسْتَعْلِمُ", masdar: "اِسْتِعْلَامٌ", audioStr: "اِسْتَعْلَمَ ، يَسْتَعْلِمُ ، اِسْتِعْلَامٌ" },
+            { th: "ใช้งาน", past: "اِسْتَعْمَلَ", present: "يَسْتَعْمِلُ", masdar: "اِسْتِعْمَالٌ", audioStr: "اِسْتَعْمَلَ ، يَسْتَعْمِلُ ، اِسْتِعْمَالٌ" },
+            { th: "ขอความช่วยเหลือ", past: "اِسْتَغَاثَ", present: "يَسْتَغِيثُ", masdar: "اِسْتِغَاثَةٌ", audioStr: "اِسْتَغَاثَ ، يَسْتَغِيثُ ، اِسْتِغَاثَةٌ" },
+            { th: "ขออภัยโทษ", past: "اِسْتَغْفَرَ", present: "يَسْتَغْفِرُ", masdar: "اِسْتِغْفَارٌ", audioStr: "اِسْتَغْفَرَ ، يَسْتَغْفِرُ ، اِسْتِغْفَارٌ" },
+            { th: "ร่ำรวย, พอเพียง", past: "اِسْتَغْنَى", present: "يَسْتَغْنِي", masdar: "اِسْتِغْنَاءٌ", audioStr: "اِسْتَغْنَى ، يَسْتَغْنِي ، اِسْتِغْنَاءٌ" },
+            { th: "ขอคำอธิบาย", past: "اِسْتَفْسَرَ", present: "يَسْتَفْسِرُ", masdar: "اِسْتِفْسَارٌ", audioStr: "اِسْتَفْسَرَ ، يَسْتَفْسِرُ ، اِسْتِفْسَارٌ" },
+            { th: "ถาม, ขอความเข้าใจ", past: "اِسْتَفْهَمَ", present: "يَسْتَفْهِمُ", masdar: "اِسْتِفْهَامٌ", audioStr: "اِسْتَفْهَمَ ، يَسْتَفْهِمُ ، اِسْتِفْهَامٌ" },
+            { th: "ยืนหยัด, เที่ยงตรง", past: "اِسْتَقَامَ", present: "يَسْتَقِيمُ", masdar: "اِسْتِقَامَةٌ", audioStr: "اِسْتَقَامَ ، يَسْتَقِيمُ ، اِسْتِقَامَةٌ" },
+            { th: "ต้อนรับ", past: "اِسْتَقْبَلَ", present: "يَسْتَقْبِلُ", masdar: "اِسْتِقْبَالٌ", audioStr: "اِسْتَقْبَلَ ، يَسْتَقْبِلُ ، اِسْتِقْبَالٌ" },
+            { th: "อาศัยอยู่ถาวร", past: "اِسْتَقَرَّ", present: "يَسْتَقِرُّ", masdar: "اِسْتِقْرَارٌ", audioStr: "اِسْتَقَرَّ ، يَسْتَقِرُّ ، اِسْتِقْرَارٌ" },
+            { th: "ต่อเนื่อง", past: "اِسْتَمَرَّ", present: "يَسْتَمِرُّ", masdar: "اِسْتِمْرَارٌ", audioStr: "اِسْتَمَرَّ ، يَسْتَمِرُّ ، اِسْتِمْرَارٌ" },
+            { th: "ตั้งใจฟัง", past: "اِسْتَمَعَ", present: "يَسْتَمِعُ", masdar: "اِسْتِمَاعٌ", audioStr: "اِسْتَمَعَ ، يَسْتَمِعُ ، اِسْتِمَاعٌ" },
+            { th: "นำออกมา", past: "اِسْتَنْبَطَ", present: "يَسْتَنْبِطُ", masdar: "اِسْتِنْبَاطٌ", audioStr: "اِسْتَنْبَطَ ، يَسْتَنْبِطُ ، اِسْتِنْبَاطٌ" },
+            { th: "สูดเข้าไป", past: "اِسْتَنْشَقَ", present: "يَسْتَنْشِقُ", masdar: "اِسْتِنْشَاقٌ", audioStr: "اِسْتَنْشَقَ ، يَسْتَنْشِقُ ، اِسْتِنْشَاقٌ" },
+            { th: "ตั้งถิ่นฐาน", past: "اِسْتَوْطَنَ", present: "يَسْتَوْطِنُ", masdar: "اِسْتِيطَانٌ", audioStr: "اِسْتَوْطَنَ ، يَسْتَوْطِنُ ، اِسْتِيطَانٌ" },
+            { th: "ตื่น", past: "اِسْتَيْقَظَ", present: "يَسْتَيْقِظُ", masdar: "اِسْتِيقَاظٌ", audioStr: "اِسْتَيْقَظَ ، يَسْتَيْقِظُ ، اِسْتِيقَاظٌ" },
+            { th: "ยกเว้น", past: "اِسْتَثْنَى", present: "يَسْتَثْنِي", masdar: "اِسْتِثْنَاءٌ", audioStr: "اِسْتَثْنَى ، يَسْتَثْنِي ، اِسْتِثْنَاءٌ" },
+            { th: "ขอฝน", past: "اِسْتَسْقَى", present: "يَسْتَسْقِي", masdar: "اِسْتِسْقَاءٌ", audioStr: "اِسْتَسْقَى ، يَسْتَسْقِي ، اِسْتِسْقَاءٌ" },
+            { th: "ขอคำชี้แนะ", past: "اِسْتَرْشَدَ", present: "يَسْتَرْشِدُ", masdar: "اِسْتِرْشَادٌ", audioStr: "اِسْتَرْشَدَ ، يَسْتَرْشِدُ ، اِسْتِرْشَادٌ" },
+            { th: "เข้าใจ", past: "فَهِمَ", present: "يَفْهَمُ", masdar: "فَهْمٌ", audioStr: "فَهِمَ ، يَفْهَمُ ، فَهْمٌ" },
+            { th: "รู้จัก, ทราบ", past: "عَرَفَ", present: "يَعْرِفُ", masdar: "مَعْرِفَةٌ", audioStr: "عَرَفَ ، يَعْرِفُ ، مَعْرِفَةٌ" },
+            { th: "รู้, ทราบ", past: "عَلِمَ", present: "يَعْلَمُ", masdar: "عِلْمٌ", audioStr: "عَلِمَ ، يَعْلَمُ ، عِلْمٌ" },
+            { th: "ตระหนัก, เข้าใจถ่องแท้", past: "أَدْرَكَ", present: "يُدْرِكُ", masdar: "إِدْرَاكٌ", audioStr: "أَدْرَكَ ، يُدْرِكُ ، إِدْرَاكٌ" },
+            { th: "ทำความเข้าใจ, ซึมซับ", past: "اِسْتَوْعَبَ", present: "يَسْتَوْعِبُ", masdar: "اِسْتِيعَابٌ", audioStr: "اِسْتَوْعَبَ ، يَسْتَوْعِبُ ، اِسْتِيعَابٌ" },
+            { th: "อธิบาย", past: "شَرَحَ", present: "يَشْرَحُ", masdar: "شَرْحٌ", audioStr: "شَرَحَ ، يَشْرَحُ ، شَرْحٌ" },
+            { th: "แก้ปัญหา, ไขโจทย์", past: "حَلَّ", present: "يَحُلُّ", masdar: "حَلٌّ", audioStr: "حَلَّ ، يَحُلُّ ، حَلٌّ" },
+            { th: "สรุปใจความ", past: "لَخَّصَ", present: "يُلَخِّصُ", masdar: "تَلْخِيصٌ", audioStr: "لَخَّصَ ، يُلَخِّصُ ، تَلْخِيصٌ" },
+            { th: "วิเคราะห์", past: "حَلَّلَ", present: "يُحَلِّلُ", masdar: "تَحْلِيلٌ", audioStr: "حَلَّلَ ، يُحَلِّلُ ، تَحْلِيلٌ" },
+            { th: "ประเมินผล", past: "قَيَّمَ", present: "يُقَيِّمُ", masdar: "تَقْيِيمٌ", audioStr: "قَيَّمَ ، يُقَيِّمُ ، تَقْيِيمٌ" },
+            { th: "มีสมาธิ, จดจ่อ", past: "رَكَّزَ", present: "يُرَكِّزُ", masdar: "تَرْكِيزٌ", audioStr: "رَكَّزَ ، يُرَكِّزُ ، تَرْكِيزٌ" },
+            { th: "ใส่ใจ, ระมัดระวัง", past: "اِنْتَبَهَ", present: "يَنْتَبِهُ", masdar: "اِنْتِبَاهٌ", audioStr: "اِنْتَبَهَ ، يَنْتَبِهُ ، اِنْتِبَاهٌ" },
+            { th: "นอนดึก, อดหลับอดนอน", past: "سَهِرَ", present: "يَسْهَرُ", masdar: "سَهَرٌ", audioStr: "سَهِرَ ، يَسْهَرُ ، سَهَرٌ" },
+            { th: "ขาดเรียน, ไม่อยู่", past: "غَابَ", present: "يَغِيبُ", masdar: "غِيَابٌ", audioStr: "غَابَ ، يَغِيبُ ، غِيَابٌ" },
+            { th: "สอบผ่าน, สำเร็จ", past: "نَجَحَ", present: "يَنْجَحُ", masdar: "نَجَاحٌ", audioStr: "نَجَحَ ، يَنْجَحُ ، نَجَاحٌ" },
+            { th: "สอบตก", past: "رَسَبَ", present: "يَرْسُبُ", masdar: "رُسُوبٌ", audioStr: "رَسَبَ ، يَرْسُبُ ، رُسُوبٌ" },
+            { th: "เป็นเลิศ, ดีเด่น", past: "تَفَوَّقَ", present: "يَتَفَوَّقُ", masdar: "تَفَوُّقٌ", audioStr: "تَفَوَّقَ ، يَتَفَوَّقُ ، تَفَوُّقٌ" },
+            { th: "จบการศึกษา", past: "تَخَرَّجَ", present: "يَتَخَرَّجُ", masdar: "تَخَرُّجٌ", audioStr: "تَخَرَّجَ ، يَتَخَرَّجُ ، تَخَرُّجٌ" },
+            { th: "จดบันทึก", past: "دَوَّنَ", present: "يُدَوِّنُ", masdar: "تَدْوِينٌ", audioStr: "دَوَّنَ ، يُدَوِّنُ ، تَدْوِينٌ" },
+            { th: "คัดลอก", past: "نَسَخَ", present: "يَنْسَخُ", masdar: "نَسْخٌ", audioStr: "نَسَخَ ، يَنْسَخُ ، نَسْخٌ" },
+            { th: "พิมพ์", past: "طَبَعَ", present: "يَطْبَعُ", masdar: "طِبَاعَةٌ", audioStr: "طَبَعَ ، يَطْبَعُ ، طِبَاعَةٌ" },
+            { th: "ถ่ายเอกสาร, ถ่ายภาพ", past: "صَوَّرَ", present: "يُصَوِّرُ", masdar: "تَصْوِيرٌ", audioStr: "صَوَّرَ ، يُصَوِّرُ ، تَصْوِيرٌ" },
+            { th: "ขีดเส้น", past: "سَطَّرَ", present: "يُسَطِّرُ", masdar: "تَسْطِيرٌ", audioStr: "سَطَّرَ ، يُسَطِّرُ ، تَسْطِيرٌ" },
+            { th: "วาดภาพ", past: "رَسَمَ", present: "يَرْسُمُ", masdar: "رَسْمٌ", audioStr: "رَسَمَ ، يَرْسُمُ ، رَسْمٌ" },
+            { th: "ระบายสี", past: "لَوَّنَ", present: "يُلَوِّنُ", masdar: "تَلْوِينٌ", audioStr: "لَوَّنَ ، يُلَوِّنُ ، تَلْوِينٌ" },
+            { th: "ขีดฆ่า, ลบออก", past: "شَطَبَ", present: "يَشْطُبُ", masdar: "شَطْبٌ", audioStr: "شَطَبَ ، يَشْطُبُ ، شَطْبٌ" },
+            { th: "เหลา (ดินสอ)", past: "بَرَى", present: "يَبْرِي", masdar: "بَرْيٌ", audioStr: "بَرَى ، يَبْرِي ، بَرْيٌ" },
+            { th: "แปะ, ติดกาว", past: "لَصَقَ", present: "يَلْصَقُ", masdar: "لَصْقٌ", audioStr: "لَصَقَ ، يَلْصَقُ ، لَصْقٌ" },
+            { th: "ห่อปก, เข้าเล่ม", past: "جَلَّدَ", present: "يُجَلِّدُ", masdar: "تَجْلِيدٌ", audioStr: "جَلَّدَ ، يُجَلِّدُ ، تَجْلِيدٌ" },
+            { th: "เจาะรู", past: "ثَقَبَ", present: "يَثْقُبُ", masdar: "ثَقْبٌ", audioStr: "ثَقَبَ ، يَثْقُبُ ، ثَقْبٌ" },
+            { th: "ออกเสียง, พูด", past: "نَطَقَ", present: "يَنْطِقُ", masdar: "نُطْقٌ", audioStr: "نَطَقَ ، يَنْطِقُ ، نُطْقٌ" },
+            { th: "สะกดคำ", past: "تَهَجَّى", present: "يَتَهَجَّى", masdar: "تَهَجٍّ", audioStr: "تَهَجَّى ، يَتَهَجَّى ، تَهَجٍّ" },
+            { th: "เปล่งเสียง", past: "لَفَظَ", present: "يَلْفِظُ", masdar: "لَفْظٌ", audioStr: "لَفَظَ ، يَلْفِظُ ، لَفْظٌ" },
+            { th: "ทำซ้ำ, พูดซ้ำ", past: "كَرَّرَ", present: "يُكَرِّرُ", masdar: "تَكْرَارٌ", audioStr: "كَرَّرَ ، يُكَرِّرُ ، تَكْرَارٌ" },
+            { th: "พูดตาม", past: "رَدَّدَ", present: "يُرَدِّدُ", masdar: "تَرْدِيدٌ", audioStr: "رَدَّدَ ، يُرَدِّدُ ، تَرْدِيدٌ" },
+            { th: "สนทนาโต้ตอบ", past: "حَاوَرَ", present: "يُحَاوِرُ", masdar: "حِوَارٌ", audioStr: "حَاوَرَ ، يُحَاوِرُ ، حِوَارٌ" },
+            { th: "ถกเถียง, โต้แย้ง", past: "جَادَلَ", present: "يُجَادِلُ", masdar: "جِدَالٌ", audioStr: "جَادَلَ ، يُجَادِلُ ، جِدَالٌ" },
+            { th: "กล่าวสุนทรพจน์", past: "خَطَبَ", present: "يَخْطُبُ", masdar: "خُطْبَةٌ", audioStr: "خَطَبَ ، يَخْطُبُ ، خُطْبَةٌ" },
+            { th: "พิสูจน์ให้เห็น", past: "بَرْهَنَ", present: "يُبَرْهِنُ", masdar: "بُرْهَانٌ", audioStr: "بَرْهَنَ ، يُبَرْهِنُ ، بُرْهَانٌ" },
+            { th: "อ้างหลักฐาน", past: "دَلَّلَ", present: "يُدَلِّلُ", masdar: "تَدْلِيلٌ", audioStr: "دَلَّلَ ، يُدَلِّلُ ، تَدْلِيلٌ" },
+            { th: "สรุปผล", past: "اِسْتَنْتَجَ", present: "يَسْتَنْتِجُ", masdar: "اِسْتِنْتَاجٌ", audioStr: "اِسْتَنْتَجَ ، يَسْتَنْتِجُ ، اِسْتِنْتَاجٌ" },
+            { th: "สังเกต, หมายเหตุ", past: "لَاحَظَ", present: "يُلَاحِظُ", masdar: "مُلَاحَظَةٌ", audioStr: "لَاحَظَ ، يُلَاحِظُ ، مُلَاحَظَةٌ" },
+            { th: "เสนอแนะ", past: "اِقْتَرَحَ", present: "يَقْتَرِحُ", masdar: "اِقْتِرَاحٌ", audioStr: "اِقْتَرَحَ ، يَقْتَرِحُ ، اِقْتِرَاحٌ" },
+            { th: "ชี้นำ, แนะนำ", past: "وَجَّهَ", present: "يُوَجِّهُ", masdar: "تَوْجِيهٌ", audioStr: "وَجَّهَ ، يُوَجِّهُ ، تَوْجِيهٌ" },
+            { th: "สอนหนังสือ", past: "دَرَّسَ", present: "يُدَرِّسُ", masdar: "تَدْرِيسٌ", audioStr: "دَرَّسَ ، يُدَرِّسُ ، تَدْرِيسٌ" },
+            { th: "บรรยาย (วิชาการ)", past: "حَاضَرَ", present: "يُحَاضِرُ", masdar: "مُحَاضَرَةٌ", audioStr: "حَاضَرَ ، يُحَاضِرُ ، مُحَاضَرَةٌ" },
+            { th: "บอกบท, ป้อนคำ", past: "لَقَّنَ", present: "يُلَقِّنُ", masdar: "تَلْقِينٌ", audioStr: "لَقَّنَ ، يُلَقِّنُ ، تَلْقِينٌ" },
+            { th: "บอกให้เขียน", past: "أَمْلَى", present: "يُمْلِي", masdar: "إِمْلَاءٌ", audioStr: "أَمْلَى ، يُمْلِي ، إِمْلَاءٌ" },
+            { th: "เริ่มต้น", past: "بَدَأَ", present: "يَبْدَأُ", masdar: "بَدْءٌ", audioStr: "بَدَأَ ، يَبْدَأُ ، بَدْءٌ" },
+            { th: "จบ, ปิดท้าย", past: "خَتَمَ", present: "يَخْتِمُ", masdar: "خَتْمٌ", audioStr: "خَتَمَ ، يَخْتِمُ ، خَتْمٌ" },
+            { th: "ทำให้เสร็จสิ้น", past: "أَنْهَى", present: "يُنْهِي", masdar: "إِنْهَاءٌ", audioStr: "أَنْهَى ، يُنْهِي ، إِنْهَاءٌ" },
+            { th: "ดำเนินการต่อ", past: "وَاصَلَ", present: "يُوَاصِلُ", masdar: "مُوَاصَلَةٌ", audioStr: "وَاصَلَ ، يُوَاصِلُ ، مُوَاصَلَةٌ" },
+            { th: "หยุดชั่วคราว", past: "تَوَقَّفَ", present: "يَتَوَقَّفُ", masdar: "تَوَقُّفٌ", audioStr: "تَوَقَّفَ ، يَتَوَقَّفُ ، تَوَقُّفٌ" },
+            { th: "พักผ่อน", past: "اِسْتَرَاحَ", present: "يَسْتَرِيحُ", masdar: "اِسْتِرَاحَةٌ", audioStr: "اِسْتَرَاحَ ، يَسْتَرِيحُ ، اِسْتِرَاحَةٌ" },
+            { th: "เล่น", past: "لَعِبَ", present: "يَلْعَبُ", masdar: "لَعِبٌ", audioStr: "لَعِبَ ، يَلْعَبُ ، لَعِبٌ" },
+            { th: "ทำสารบัญ", past: "فَهْرَسَ", present: "يُفَهْرِسُ", masdar: "فَهْرَسَةٌ", audioStr: "فَهْرَسَ ، يُفَهْرِسُ ، فَهْرَسَةٌ" },
+            { th: "จัดเป็นหมวดหมู่ (บท)", past: "بَوَّبَ", present: "يُبَوِّبُ", masdar: "تَبْوِيبٌ", audioStr: "بَوَّبَ ، يُبَوِّبُ ، تَبْوِيبٌ" },
+            { th: "จัดประเภท", past: "صَنَّفَ", present: "يُصَنِّفُ", masdar: "تَصْنِيفٌ", audioStr: "صَنَّفَ ، يُصَنِّفُ ، تَصْنِيفٌ" },
+            { th: "จัดระเบียบ", past: "رَتَّبَ", present: "يُرَتِّبُ", masdar: "تَرْتِيبٌ", audioStr: "رَتَّبَ ، يُرَتِّبُ ، تَرْتِيبٌ" },
+            { th: "จัดการ, วางระบบ", past: "نَظَّمَ", present: "يُنَظِّمُ", masdar: "تَنْظِيمٌ", audioStr: "نَظَّمَ ، يُنَظِّمُ ، تَنْظِيمٌ" },
+            { th: "วางแผน", past: "خَطَّطَ", present: "يُخَطِّطُ", masdar: "تَخْطِيطٌ", audioStr: "خَطَّطَ ، يُخَطِّطُ ، تَخْطِيطٌ" },
+            { th: "จัดตารางเวลา", past: "جَدْوَلَ", present: "يُجَدْوِلُ", masdar: "جَدْوَلَةٌ", audioStr: "جَدْوَلَ ، يُجَدْوِلُ ، جَدْوَلَةٌ" },
+            { th: "วัดขนาด/ระยะ", past: "قَاسَ", present: "يَقِيسُ", masdar: "قِيَاسٌ", audioStr: "قَاسَ ، يَقِيسُ ، قِيَاسٌ" },
+            { th: "ลบ (คณิต), นำเสนอ", past: "طَرَحَ", present: "يَطْرَحُ", masdar: "طَرْحٌ", audioStr: "طَرَحَ ، يَطْرَحُ ، طَرْحٌ" },
+            { th: "หาร, แบ่ง", past: "قَسَمَ", present: "يَقْسِمُ", masdar: "قِسْمَةٌ", audioStr: "قَسَمَ ، يَقْسِمُ ، قِسْمَةٌ" },
+            { th: "บวกเพิ่ม, เติม", past: "أَضَافَ", present: "يُضِيفُ", masdar: "إِضَافَةٌ", audioStr: "أَضَافَ ، يُضِيفُ ، إِضَافَةٌ" },
+            { th: "ลดลง", past: "نَقَصَ", present: "يَنْقُصُ", masdar: "نَقْصٌ", audioStr: "نَقَصَ ، يَنْقُصُ ، نَقْصٌ" },
+            { th: "ทำให้น้อยลง", past: "قَلَّلَ", present: "يُقَلِّلُ", masdar: "تَقْلِيلٌ", audioStr: "قَلَّلَ ، يُقَلِّلُ ، تَقْلِيلٌ" },
+            { th: "ทบทวนภาพรวม", past: "اِسْتَعْرَضَ", present: "يَسْتَعْرِضُ", masdar: "اِسْتِعْرَاضٌ", audioStr: "اِسْتَعْرَضَ ، يَسْتَعْرِضُ ، اِسْتِعْرَاضٌ" },
+            { th: "เลื่อนขึ้น", past: "تَرَقَّى", present: "يَتَرَقَّى", masdar: "تَرَقٍّ", audioStr: "تَرَقَّى ، يَتَرَقَّى ، تَرَقٍّ" },
+            { th: "สนับสนุน, ให้กำลังใจ", past: "شَجَّعَ", present: "يُشَجِّعُ", masdar: "تَشْجِيعٌ", audioStr: "شَجَّعَ ، يُشَجِّعُ ، تَشْجِيعٌ" },
+            { th: "กระตุ้น, สร้างแรงจูงใจ", past: "حَفَّزَ", present: "يُحَفِّزُ", masdar: "تَحْفِيزٌ", audioStr: "حَفَّزَ ، يُحَفِّزُ ، تَحْفِيزٌ" },
+            { th: "ให้รางวัล", past: "كَافَأَ", present: "يُكَافِئُ", masdar: "مُكَافَأَةٌ", audioStr: "كَافَأَ ، يُكَافِئُ ، مُكَافَأَةٌ" },
+            { th: "ลงโทษ", past: "عَاقَبَ", present: "يُعَاقِبُ", masdar: "عِقَابٌ", audioStr: "عَاقَبَ ، يُعَاقِبُ ، عِقَابٌ" },
+            { th: "ตักเตือน, คาดโทษ", past: "أَنْذَرَ", present: "يُنْذِرُ", masdar: "إِنْذَارٌ", audioStr: "أَنْذَرَ ، يُنْذِرُ ، إِنْذَارٌ" },
+            { th: "เตือนให้ระวัง", past: "حَذَّرَ", present: "يُحَذِّرُ", masdar: "تَحْذِيرٌ", audioStr: "حَذَّرَ ، يُحَذِّرُ ، تَحْذِيرٌ" },
+            { th: "อ้างเหตุผลรองรับ", past: "بَرَّرَ", present: "يُبَرِّرُ", masdar: "تَبْرِيرٌ", audioStr: "بَرَّرَ ، يُبَرِّرُ ، تَبْرِيرٌ" },
+            { th: "ขอโทษ", past: "اِعْتَذَرَ", present: "يَعْتَذِرُ", masdar: "اِعْتِذَارٌ", audioStr: "اِعْتَذَرَ ، يَعْتَذِرُ ، اِعْتِذَارٌ" },
+            { th: "ให้อภัย", past: "سَامَحَ", present: "يُسَامِحُ", masdar: "مُسَامَحَةٌ", audioStr: "سَامَحَ ، يُسَامِحُ ، مُسَامَحَةٌ" },
+            { th: "ยกโทษให้, แก้ตัว", past: "عَذَرَ", present: "يَعْذِرُ", masdar: "عُذْرٌ", audioStr: "عَذَرَ ، يَعْذِرُ ، عُذْرٌ" },
+            { th: "เห็นด้วย", past: "وَافَقَ", present: "يُوَافِقُ", masdar: "مُوَافَقَةٌ", audioStr: "وَافَقَ ، يُوَافِقُ ، مُوَافَقَةٌ" },
+            { th: "คัดค้าน", past: "عَارَضَ", present: "يُعَارِضُ", masdar: "مُعَارَضَةٌ", audioStr: "عَارَضَ ، يُعَارِضُ ، مُعَارَضَةٌ" },
+            { th: "ประท้วง, โต้แย้ง", past: "اِحْتَجَّ", present: "يَحْتَجُّ", masdar: "اِحْتِجَاجٌ", audioStr: "اِحْتَجَّ ، يَحْتَجُّ ، اِحْتِجَاجٌ" },
+            { th: "ตั้งใจฟังอย่างลึกซึ้ง", past: "أَصْغَى", present: "يُصْغِي", masdar: "إِصْغَاءٌ", audioStr: "أَصْغَى ، يُصْغِي ، إِصْغَاءٌ" },
+            { th: "เงียบฟัง", past: "أَنْصَتَ", present: "يُنْصِتُ", masdar: "إِنْصَاتٌ", audioStr: "أَنْصَتَ ، يُنْصِتُ ، إِنْصَاتٌ" },
+            { th: "เขียนโปรแกรม", past: "بَرْمَجَ", present: "يُبَرْمِجُ", masdar: "بَرْمَجَةٌ", audioStr: "بَرْمَجَ ، يُبَرْمِجُ ، بَرْمَجَةٌ" },
+            { th: "ออกแบบ", past: "صَمَّمَ", present: "يُصَمِّمُ", masdar: "تَصْمِيمٌ", audioStr: "صَمَّمَ ، يُصَمِّمُ ، تَصْمِيمٌ" },
+            { th: "พัฒนา", past: "طَوَّرَ", present: "يُطَوِّرُ", masdar: "تَطْوِيرٌ", audioStr: "طَوَّرَ ، يُطَوِّرُ ، تَطْوِيرٌ" },
+            { th: "อัปเดต, ทำให้ทันสมัย", past: "حَدَّثَ", present: "يُحَدِّثُ", masdar: "تَحْدِيثٌ", audioStr: "حَدَّثَ ، يُحَدِّثُ ، تَحْدِيثٌ" },
+            { th: "แก้ไขปรับปรุง", past: "عَدَّلَ", present: "يُعَدِّلُ", masdar: "تَعْدِيلٌ", audioStr: "عَدَّلَ ، يُعَدِّلُ ، تَعْدِيلٌ" },
+            { th: "ตรวจสอบความถูกต้อง", past: "دَقَّقَ", present: "يُدَقِّقُ", masdar: "تَدْقِيقٌ", audioStr: "دَقَّقَ ، يُدَقِّقُ ، تَدْقِيقٌ" },
+            { th: "ตรวจแก้ข้อผิดพลาด", past: "صَحَّحَ", present: "يُصَحِّحُ", masdar: "تَصْحِيحٌ", audioStr: "صَحَّحَ ، يُصَحِّحُ ، تَصْحِيحٌ" },
+            { th: "ประเมินผล, คัดให้ตรง", past: "قَوَّمَ", present: "يُقَوِّمُ", masdar: "تَقْوِيمٌ", audioStr: "قَوَّمَ ، يُقَوِّمُ ، تَقْوِيمٌ" },
+            { th: "ใส่สระ (ภาษา), ก่อตั้ง", past: "شَكَّلَ", present: "يُشَكِّلُ", masdar: "تَشْكِيلٌ", audioStr: "شَكَّلَ ، يُشَكِّلُ ، تَشْكِيلٌ" },
+            { th: "วิเคราะห์ไวยากรณ์", past: "أَعْرَبَ", present: "يُعْرِبُ", masdar: "إِعْرَابٌ", audioStr: "أَعْرَبَ ، يُعْرِبُ ، إِعْرَابٌ" },
+            { th: "เรียบเรียงถ้อยคำ", past: "صَاغَ", present: "يَصُوغُ", masdar: "صِيَاغَةٌ", audioStr: "صَاغَ ، يَصُوغُ ، صِيَاغَةٌ" },
+            { th: "แต่งหนังสือ, ประพันธ์", past: "أَلَّفَ", present: "يُؤَلِّفُ", masdar: "تَأْلِيفٌ", audioStr: "أَلَّفَ ، يُؤَلِّفُ ، تَأْلِيفٌ" },
+            { th: "ตีพิมพ์, เผยแพร่", past: "نَشَرَ", present: "يَنْشُرُ", masdar: "نَشْرٌ", audioStr: "نَشَرَ ، يَنْشُرُ ، نَشْرٌ" },
+            { th: "พับ", past: "طَوَى", present: "يَطْوِي", masdar: "طَيٌّ", audioStr: "طَوَى ، يَطْوِي ، طَيٌّ" },
+            { th: "งอ, โค้ง", past: "ثَنَى", present: "يَثْنِي", masdar: "ثَنْيٌ", audioStr: "ثَنَى ، يَثْنِي ، ثَنْيٌ" },
+            { th: "จ้องมอง", past: "حَمْلَقَ", present: "يُحَمْلِقُ", masdar: "حَمْلَقَةٌ", audioStr: "حَمْلَقَ ، يُحَمْلِقُ ، حَمْلَقَةٌ" },
+            { th: "ตั้งใจ, มุ่งหมาย", past: "قَصَدَ", present: "يَقْصِدُ", masdar: "قَصْدٌ", audioStr: "قَصَدَ ، يَقْصِدُ ، قَصْدٌ" },
+            { th: "เจตนา", past: "نَوَى", present: "يَنْوِي", masdar: "نِيَّةٌ", audioStr: "نَوَى ، يَنْوِي ، نِيَّةٌ" },
+            { th: "มุ่งมั่น, ตัดสินใจ", past: "عَزَمَ", present: "يَعْزِمُ", masdar: "عَزْمٌ", audioStr: "عَزَمَ ، يَعْزِمُ ، عَزْمٌ" },
+            { th: "หวัง", past: "أَمَلَ", present: "يَأْمُلُ", masdar: "أَمَلٌ", audioStr: "أَمَلَ ، يَأْمُلُ ، أَمَلٌ" },
+            { th: "คาดหวัง, คาดการณ์", past: "تَوَقَّعَ", present: "يَتَوَقَّعُ", masdar: "تَوَقُّعٌ", audioStr: "تَوَقَّعَ ، يَتَوَقَّعُ ، تَوَقُّعٌ" },
+            { th: "ต้องการ, จำเป็นต้อง", past: "اِحْتَاجَ", present: "يَحْتَاجُ", masdar: "اِحْتِيَاجٌ", audioStr: "اِحْتَاجَ ، يَحْتَاجُ ، اِحْتِيَاجٌ" },
+            { th: "ขาดแคลน, ต้องการ", past: "اِفْتَقَرَ", present: "يَفْتَقِرُ", masdar: "اِفْتِقَارٌ", audioStr: "اِفْتَقَرَ ، يَفْتَقِرُ ، اِفْتِقَارٌ" },
+            { th: "ขี้เกียจ", past: "كَسِلَ", present: "يَكْسَلُ", masdar: "كَسَلٌ", audioStr: "كَسِلَ ، يَكْسَلُ ، كَسَلٌ" },
+            { th: "กระตือรือร้น", past: "نَشِطَ", present: "يَنْشَطُ", masdar: "نَشَاطٌ", audioStr: "نَشِطَ ، يَنْشَطُ ، نَشَاطٌ" },
+            { th: "มาเช้า, มาก่อนเวลา", past: "بَكَّرَ", present: "يُبَكِّرُ", masdar: "تَبْكِيرٌ", audioStr: "بَكَّرَ ، يُبَكِّرُ ، تَبْكِيرٌ" },
+            { th: "มาสาย, ล่าช้า", past: "تَأَخَّرَ", present: "يَتَأَخَّرُ", masdar: "تَأَخُّرٌ", audioStr: "تَأَخَّرَ ، يَتَأَخَّرُ ، تَأَخُّرٌ" },
+            { th: "รีบเร่ง", past: "أَسْرَعَ", present: "يُسْرِعُ", masdar: "إِسْرَاعٌ", audioStr: "أَسْرَعَ ، يُسْرِعُ ، إِسْرَاعٌ" },
+            { th: "ช้ากว่า", past: "بَطُؤَ", present: "يَبْطُؤُ", masdar: "بُطْءٌ", audioStr: "بَطُؤَ ، يَبْطُؤُ ، بُطْءٌ" },
+            { th: "เพลิดเพลิน", past: "اِسْتَمْتَعَ", present: "يَسْتَمْتِعُ", masdar: "اِسْتِمْتَاعٌ", audioStr: "اِسْتَمْتَعَ ، يَسْتَمْتِعُ ، اِسْتِمْتَاعٌ" },
+            { th: "เบื่อหน่าย", past: "مَلَّ", present: "يَمَلُّ", masdar: "مَلَلٌ", audioStr: "مَلَّ ، يَمَلُّ ، مَلَلٌ" },
+            { th: "ร้องเรียน, บ่น", past: "شَكَا", present: "يَشْكُو", masdar: "شَكْوَى", audioStr: "شَكَا ، يَشْكُو ، شَكْوَى" },
+            { th: "เหนื่อย", past: "تَعِبَ", present: "يَتْعَبُ", masdar: "تَعَبٌ", audioStr: "تَعِبَ ، يَتْعَبُ ، تَعَبٌ" },
+            { th: "สบายใจ, ผ่อนคลาย", past: "اِرْتَاحَ", present: "يَرْتَاحُ", masdar: "اِرْتِيَاحٌ", audioStr: "اِرْتَاحَ ، يَرْتَاحُ ، اِرْتِيَاحٌ" },
+            { th: "ถ่ายทอด, ส่งผ่าน", past: "نَاقَلَ", present: "يُنَاقِلُ", masdar: "مُنَاقَلَةٌ", audioStr: "نَاقَلَ ، يُنَاقِلُ ، مُنَاقَلَةٌ" },
+            { th: "แลกเปลี่ยน", past: "بَادَلَ", present: "يُبَادِلُ", masdar: "مُبَادَلَةٌ", audioStr: "بَادَلَ ، يُبَادِلُ ، مُبَادَلَةٌ" },
+            { th: "ชดเชย", past: "عَوَّضَ", present: "يُعَوِّضُ", masdar: "تَعْوِيضٌ", audioStr: "عَوَّضَ ، يُعَوِّضُ ، تَعْوِيضٌ" },
+            { th: "นำไปปฏิบัติ", past: "طَبَّقَ", present: "يُطَبِّقُ", masdar: "تَطْبِيقٌ", audioStr: "طَبَّقَ ، يُطَبِّقُ ، تَطْبِيقٌ" },
+            { th: "ฝึกฝน, ปฏิบัติจริง", past: "مَارَسَ", present: "يُمَارِسُ", masdar: "مُمَارَسَةٌ", audioStr: "مَارَسَ ، يُمَارِسُ ، مُمَارَسَةٌ" },
+            { th: "ฝึกอบรม (ให้ผู้อื่น)", past: "دَرَّبَ", present: "يُدَرِّبُ", masdar: "تَدْرِيبٌ", audioStr: "دَرَّبَ ، يُدَرِّبُ ، تَدْرِيبٌ" },
+            { th: "ได้รับการฝึก, ฝึกซ้อม", past: "تَدَرَّبَ", present: "يَتَدَرَّبُ", masdar: "تَدَرُّبٌ", audioStr: "تَدَرَّبَ ، يَتَدَرَّبُ ، تَدَرُّبٌ" },
+            { th: "พัฒนา, ทำให้เจริญ", past: "نَمَّى", present: "يُنَمِّي", masdar: "تَنْمِيَةٌ", audioStr: "نَمَّى ، يُنَمِّي ، تَنْمِيَةٌ" },
+            { th: "เติบโต", past: "كَبُرَ", present: "يَكْبُرُ", masdar: "كِبَرٌ", audioStr: "كَبُرَ ، يَكْبُرُ ، كِبَرٌ" },
+            { th: "เล็กลง", past: "صَغُرَ", present: "يَصْغُرُ", masdar: "صِغَرٌ", audioStr: "صَغُرَ ، يَصْغُرُ ، صِغَرٌ" },
+            { th: "ง่ายดาย", past: "سَهُلَ", present: "يَسْهُلُ", masdar: "سُهُولَةٌ", audioStr: "سَهُلَ ، يَسْهُلُ ، سُهُولَةٌ" },
+            { th: "ยากลำบาก", past: "صَعُبَ", present: "يَصْعُبُ", masdar: "صُعُوبَةٌ", audioStr: "صَعُبَ ، يَصْعُبُ ، صُعُوبَةٌ" },
+            { th: "ชำนาญ, ครอบคลุม", past: "تَمَكَّنَ", present: "يَتَمَكَّنُ", masdar: "تَمَكُّنٌ", audioStr: "تَمَكَّنَ ، يَتَمَكَّنُ ، تَمَكُّنٌ" },
+            { th: "ผ่าน (การทดสอบ)", past: "اِجْتَازَ", present: "يَجْتَازُ", masdar: "اِجْتِيَازٌ", audioStr: "اِجْتَازَ ، يَجْتَازُ ، اِجْتِيَازٌ" },
+            { th: "เสนอชื่อ, คัดเลือก", past: "رَشَّحَ", present: "يُرَشِّحُ", masdar: "تَرْشِيحٌ", audioStr: "رَشَّحَ ، يُرَشِّحُ ، تَرْشِيحٌ" },
+            { th: "รับรอง", past: "زَكَّى", present: "يُزَكِّي", masdar: "تَزْكِيَةٌ", audioStr: "زَكَّى ، يُزَكِّي ، تَزْكِيَةٌ" },
+            { th: "ได้รับ", past: "حَصَلَ", present: "يَحْصُلُ", masdar: "حُصُولٌ", audioStr: "حَصَلَ ، يَحْصُلُ ، حُصُولٌ" },
+            { th: "บรรลุ, ได้มา", past: "نَالَ", present: "يَنَالُ", masdar: "نَيْلٌ", audioStr: "نَالَ ، يَنَالُ ، نَيْلٌ" },
+            { th: "ได้รับประโยชน์", past: "كَسَبَ", present: "يَكْسِبُ", masdar: "كَسْبٌ", audioStr: "كَسَبَ ، يَكْسِبُ ، كَسْبٌ" },
+            { th: "สูญเสีย, ขาดทุน", past: "خَسِرَ", present: "يَخْسَرُ", masdar: "خَسَارَةٌ", audioStr: "خَسِرَ ، يَخْسَرُ ، خَسَارَةٌ" },
+            { th: "ลงทะเบียน, บันทึกชื่อ", past: "قَيَّدَ", present: "يُقَيِّدُ", masdar: "تَقْيِيدٌ", audioStr: "قَيَّدَ ، يُقَيِّدُ ، تَقْيِيدٌ" },
+            { th: "เข้าศึกษา, สมัครเข้า", past: "اِلْتَحَقَ", present: "يَلْتَحِقُ", masdar: "اِلْتِحَاقٌ", audioStr: "اِلْتَحَقَ ، يَلْتَحِقُ ، اِلْتِحَاقٌ" },
+            { th: "เข้าร่วม", past: "اِنْضَمَّ", present: "يَنْضَمُّ", masdar: "اِنْضِمَامٌ", audioStr: "اِنْضَمَّ ، يَنْضَمُّ ، اِنْضِمَامٌ" },
+            { th: "มีส่วนร่วม, สมทบ", past: "أَسْهَمَ", present: "يُسْهِمُ", masdar: "إِسْهَامٌ", audioStr: "أَسْهَمَ ، يُسْهِمُ ، إِسْهَامٌ" },
+            { th: "บริจาค, อาสา", past: "تَبَرَّعَ", present: "يَتَبَرَّعُ", masdar: "تَبَرُّعٌ", audioStr: "تَبَرَّعَ ، يَتَبَرَّعُ ، تَبَرُّعٌ" },
+            { th: "คุ้นชิน", past: "تَعَوَّدَ", present: "يَتَعَوَّدُ", masdar: "تَعَوُّدٌ", audioStr: "تَعَوَّدَ ، يَتَعَوَّدُ ، تَعَوُّدٌ" },
+            { th: "เคยชินเป็นนิสัย", past: "اِعْتَادَ", present: "يَعْتَادُ", masdar: "اِعْتِيَادٌ", audioStr: "اِعْتَادَ ، يَعْتَادُ ، اِعْتِيَادٌ" }
+        ];
+
+        const wordRoots = [
+            "نوم", "غسل", "بول", "كون", "صير", "ءكل", "شرب", "بلع", "شمم", "سوق",
+            "ركب", "وقف", "قوم", "جلس", "سير", "مشي", "جري", "سيل", "سبح", "ذهب",
+            "حضر", "رجع", "صعد", "نزل", "سقط", "فتح", "غلق", "لبس", "خلع", "رفع",
+            "وضع", "سمع", "فعل", "عمل", "جعل", "جمع", "سءل", "حكم", "منح", "وهب",
+            "قبل", "ءخذ", "نظر", "عقل", "بصر", "رءي", "قرء", "كتب", "محو", "مسح",
+            "لمس", "حفظ", "نسي", "خدم", "زور", "مرض", "سعل", "عطس", "قتل", "موت",
+            "قول", "نصح", "عدد", "درس", "دعو", "قصص", "حكي", "كذب", "خدع", "صون",
+            "دخل", "خرج", "ضحك", "بكي", "غضب", "حزن", "همم", "يءس", "رجو", "شكك",
+            "ظنن", "حسب", "وهم", "وهم", "فرح", "رضي", "كره", "بغض", "رغب", "رفض",
+            "كفر", "ءمر", "نهي", "ضوع", "ضيع", "طلب", "بحث", "وجد", "ردد", "غرس",
+            "رشش", "قطف", "قطع", "حصد", "طبخ", "سلق", "قلي", "شوي", "كوي", "رمي",
+            "صبب", "زيد", "جوع", "شبع", "بيع", "قرض", "سرق", "ضرب", "صدم", "ملك",
+            "نصر", "شهد", "وصل", "بلغ", "سبب", "شتم", "ترك", "سجد", "عبد", "ثبت",
+            "قهقه", "بعثر", "عربد", "ترجم", "هندس", "غربل", "وسوس", "زلزل", "زحزح", "سفسف",
+            "دحرج", "بلسم", "جلمد", "خضخض", "خربش", "دمدم", "رمرم", "زمجر", "سرسر", "صلصل",
+            "طمءن", "فرفر", "قرقر", "كركر", "لغلغ", "مرمر", "نمنم", "همهم", "يميم", "عسعس",
+            "فلسف", "خلخل", "خندق", "دبدب", "رفرف", "زعزع", "سلسل", "شمشم", "صرصر", "ضمضم",
+            "طبطب", "عزعز", "غرغر", "فرفش", "قمقم", "كلكل", "لملم", "مهمه", "نزنز", "هزهز",
+            "تبع", "جهد", "حول", "حسب", "ذكر", "رجع", "سفر", "سهم", "شور", "شهد",
+            "عمل", "قبل", "قرن", "قوم", "قتل", "سبق", "شرك", "نفس", "نقش", "نسب",
+            "وجه", "جمع", "جمل", "فرق", "صلو", "فكر", "سلم", "ودع", "وقع", "سجل",
+            "رسل", "عطو", "مزق", "حرك", "سرف", "نفق", "جوب", "جمع", "رشد", "شور",
+            "فشو", "كثر", "نجز", "وجد", "وقد", "يقظ", "بين", "فسر", "وحد", "قلد",
+            "علم", "خبر", "مثل", "فتش", "صدق", "حبب", "رود", "حول", "نور", "قوم",
+            "عور", "دخل", "خرج", "كمل", "تمم", "نشء", "حيي", "موت", "خلص", "نبت",
+            "لغو", "فسد", "علن", "بلغ", "بلغ", "نكر", "طعم", "نظف", "طهر", "بدل",
+            "صرف", "غير", "حدث", "كلم", "علم", "علم", "جهل", "خصم", "عون", "سءل",
+            "فقه", "فهم", "وضء", "ءمل", "دبر", "صور", "خيل", "طير", "صفح", "حرك",
+            "صدق", "حقق", "غوط", "طهر", "نظف", "بسم", "يقن", "عنق", "مثل", "تبع",
+            "تفق", "شري", "خير", "صفو", "تصل", "ضهد", "جهد", "جنب", "منع", "بكر",
+            "بعد", "قرب", "بغي", "خرع", "بدع", "فرس", "جمع", "خلف", "فرق", "كسر",
+            "حرف", "صرف", "نشر", "نقل", "غسل", "لقي", "مدد", "خبر", "محن", "بلو",
+            "بدء", "نهي", "جوب", "عجل", "حمم", "خور", "خدم", "خرج", "شور", "صلح",
+            "طوع", "عون", "عوذ", "عور", "عدد", "علم", "عمل", "غوث", "غفر", "غني",
+            "فسر", "فهم", "قوم", "قبل", "قرر", "مرر", "سمع", "نبط", "نشق", "وطن",
+            "يقظ", "ثني", "سقي", "رشد", "فهم", "عرف", "علم", "درك", "وعب", "شرح",
+            "حلل", "لخص", "حلل", "قوم", "ركز", "نبه", "سهر", "غيب", "نجح", "رسب",
+            "فوق", "خرج", "دون", "نسخ", "طبع", "صور", "سطر", "رسم", "لون", "شطب",
+            "بري", "لصق", "جلد", "ثقب", "نطق", "هجو", "لفظ", "كرر", "ردد", "حور",
+            "جدل", "خطب", "برهن", "دلل", "نتج", "لحظ", "قرح", "وجه", "درس", "حضر",
+            "لقن", "ملو", "بدء", "ختم", "نهي", "وصل", "وقف", "روح", "لعب", "فهرس",
+            "بوب", "صنف", "رتب", "نظم", "خطط", "جدول", "قيس", "طرح", "قسم", "ضيف",
+            "نقص", "قلل", "عرض", "رقي", "شجع", "حفز", "كفء", "عقب", "نذر", "حذر",
+            "برر", "عذر", "سمح", "عذر", "وفق", "عرض", "حجج", "صغو", "نصت", "برمج",
+            "صمم", "طور", "حدث", "عدل", "دقق", "صحح", "قوم", "شكل", "عرب", "صوغ",
+            "ءلف", "نشر", "طوي", "ثني", "حملق", "قصد", "نوي", "عزم", "ءمل", "وقع",
+            "حوج", "فقر", "كسل", "نشط", "بكر", "ءخر", "سرع", "بطء", "متع", "ملل",
+            "شكو", "تعب", "روح", "نقل", "بدل", "عوض", "طبق", "مرس", "درب", "درب",
+            "نمي", "كبر", "صغر", "سهل", "صعب", "مكن", "جوز", "رشح", "زكو", "حصل",
+            "نيل", "كسب", "خسر", "قيد", "لحق", "ضمم", "سهم", "برع", "عود", "عود"
+        ];
+
+        // ===== ระบบลงสีอัตโนมัติ: รากศัพท์ (แดง) + สระ/ฮะเราะกาต (สีตามชนิด) =====
+        // เก็บอักษรรากของแต่ละคำ (ช่องว่าง = ยังไม่ได้ลงราก จะลงสีเฉพาะสระ)
+        function rootOf(i) { return (typeof wordRoots !== 'undefined' && wordRoots[i]) ? wordRoots[i] : ''; }
+
+        // map: อักขระฮะเราะกาต -> {cls: คลาสสี, key: คีย์เปิด/ปิดในแผงควบคุม}
+        const _HARAKAT = {
+            '\u064E':{cls:'hk-fat',key:'fat'}, '\u064B':{cls:'hk-tan',key:'tan'},   // ฟัตฮะฮ์ / ฟัตฮะตัยน์
+            '\u0650':{cls:'hk-kas',key:'kas'}, '\u064D':{cls:'hk-tan',key:'tan'},   // กัสเราะฮ์ / กัสเราะตัยน์
+            '\u064F':{cls:'hk-dam',key:'dam'}, '\u064C':{cls:'hk-tan',key:'tan'},   // ฎ็อมมะฮ์ / ฎ็อมมะตัยน์
+            '\u0652':{cls:'hk-suk',key:'suk'},                                       // สุกูน
+            '\u0651':{cls:'hk-shd',key:'shd'}                                        // ชัดดะฮ์
+        };
+        const _isHamza = c => '\u0621\u0623\u0625\u0624\u0626\u0622'.indexOf(c) >= 0;
+        const _isBaseLetter = c => (c >= '\u0621' && c <= '\u064A') || c === '\u0649';
+
+        // ===== ค่าควบคุมการลงสี (เปิด/ปิดได้รายชนิด + โหมดขาวดำ) จำค่าไว้ข้ามรอบ =====
+        const COLOR_DEFAULT = { root:true, fat:true, kas:true, dam:true, suk:true, shd:true, tan:true };
+        let colorPrefs = { ...COLOR_DEFAULT };
+        let bwMode = false;   // โหมดขาวดำล้วน — ปิดสีทั้งหมดชั่วคราว (ไม่ลบค่าเดิม)
+        const VOWEL_KEYS = ['fat','kas','dam','suk','shd','tan'];
+
+        function loadColorPrefs() {
+            try {
+                const s = JSON.parse(localStorage.getItem('kuru_colorprefs'));
+                if (s && typeof s === 'object') colorPrefs = { ...COLOR_DEFAULT, ...s };
+                bwMode = localStorage.getItem('kuru_bw') === '1';
+            } catch (e) {}
+        }
+        function saveColorPrefs() {
+            try {
+                localStorage.setItem('kuru_colorprefs', JSON.stringify(colorPrefs));
+                localStorage.setItem('kuru_bw', bwMode ? '1' : '0');
+            } catch (e) {}
+        }
+
+        // คำนวณว่าอักษรฐานตำแหน่งไหนเป็น "รากศัพท์แท้" (เดินจับคู่ตามลำดับรากที่กำหนด)
+        function _markRootPositions(chars, root, skipPrefix) {
+            const isRoot = new Array(chars.length).fill(false);
+            if (!root) return isRoot;
+            let R = [...root.replace(/\s/g,'')];
+            // มิษาล (รากตัวแรกเป็น و/ي) ในรูปปัจจุบัน → รากตัวแรกมักถูกตัดทิ้ง (وَقَفَ → يَقِفُ)
+            // ตัดออกเฉพาะเมื่อรากตัวอ่อนนั้น "ไม่ปรากฏ" ในคำจริง (กันรูปเพิ่มอักษรอย่าง يَسْتَوْطِنُ ที่ و ยังอยู่)
+            if (skipPrefix && R.length && (R[0] === '\u0648' || R[0] === '\u064A')) {
+                let seenPrefix = false, appears = false;
+                for (const c of chars) {
+                    if (!_isBaseLetter(c)) continue;
+                    if (!seenPrefix) { seenPrefix = true; continue; }
+                    if (c === '\u0648' || c === '\u064A' || c === '\u0649') { appears = true; break; }
+                }
+                if (!appears) R = R.slice(1);
+            }
+            let p = 0;
+            let prefixSkipped = !skipPrefix;   // รูปปัจจุบันขึ้นต้นด้วยอักษรบ่งกาล (ي/ت/ن/أ) เสมอ → ข้ามตัวแรกก่อนจับราก
+            for (let i = 0; i < chars.length && p < R.length; i++) {
+                const c = chars[i];
+                if (!_isBaseLetter(c)) continue;
+                if (!prefixSkipped) { prefixSkipped = true; continue; }  // ข้ามอักษรนำหน้ามุฎอเรี๊ยะอ์ตัวเดียว
+                const r = R[p];
+                if (r === '\u0648' || r === '\u064A') {            // รากตัวอ่อน (و/ي)
+                    if (c === '\u0627' && p > 0) { p++; continue; } // อะลิฟแทนรากตัวอ่อนกลางคำ → ไม่ลงสี แต่นับรากไปแล้ว (ข้ามอะลิฟต้นคำของฮัมซะตุลวัศล์)
+                    if (c === '\u0648' || c === '\u064A' || c === '\u0649') { isRoot[i] = true; p++; continue; }
+                    continue;                                       // ตัวเสริม ข้ามไป
+                } else if (r === '\u0621') {                         // รากฮัมซะฮ์
+                    if (_isHamza(c)) { isRoot[i] = true; p++; continue; }
+                    continue;
+                } else {
+                    if (c === r) { isRoot[i] = true; p++; continue; }
+                    continue;
+                }
+            }
+            return isRoot;
+        }
+
+        // คืนค่า HTML ที่ลงสีแล้ว: รากแดงหนา + สระสีตามชนิด (เคารพค่าเปิด/ปิดในแผงควบคุม)
+        function renderArabic(form, root, isPresent) {
+            if (!form) return '';
+            const chars = [...form];
+            // โหมดขาวดำ → คืนข้อความล้วน ไม่มี span สี
+            if (bwMode) return form;
+            const isRoot = colorPrefs.root ? _markRootPositions(chars, root || '', isPresent) : new Array(chars.length).fill(false);
+            let html = '';
+            for (let i = 0; i < chars.length; i++) {
+                const c = chars[i];
+                const hk = _HARAKAT[c];
+                if (hk && colorPrefs[hk.key]) { html += `<span class="${hk.cls}">${c}</span>`; }
+                else if (isRoot[i]) { html += `<span class="rootc">${c}</span>`; }
+                else { html += c; }
+            }
+            return html;
+        }
+        // ช่วยเรนเดอร์จาก index ของคำในคลัง
+        function renderForm(idx, which) {
+            const it = vocabularyDatabase[idx];
+            return renderArabic(it[which], rootOf(idx), which === 'present');
+        }
+
+        // แถบอธิบายสีสระ — สะท้อนสถานะเปิด/ปิดปัจจุบัน (ตัวที่ปิดจะจาง)
+        const LEGEND_ITEMS = [
+            { key:'root', color:'#dc2626', label:'รากศัพท์' },
+            { key:'fat',  color:'#2563eb', label:'ฟัตฮะฮ์ َ' },
+            { key:'kas',  color:'#16a34a', label:'กัสเราะฮ์ ِ' },
+            { key:'dam',  color:'#ea580c', label:'ฎ็อมมะฮ์ ُ' },
+            { key:'suk',  color:'#64748b', label:'สุกูน ْ' },
+            { key:'shd',  color:'#9333ea', label:'ชัดดะฮ์ ّ' },
+            { key:'tan',  color:'#db2777', label:'ตันวีน ٌٍ ً' },
+        ];
+        function buildLegendHTML() {
+            const chips = LEGEND_ITEMS.map(it => {
+                const on = !bwMode && colorPrefs[it.key];
+                return `<span class="legend-chip ${on ? '' : 'off'}"><span class="legend-dot" style="background:${it.color}"></span>${it.label}</span>`;
+            }).join('');
+            const note = bwMode ? 'โหมดขาวดำล้วน (ปิดสีชั่วคราว)' : 'แตะปุ่ม 🎨 มุมขวาล่างเพื่อเปิด/ปิดสีแต่ละชนิด';
+            return `<div class="bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-2">
+                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 text-center">สีช่วยจำ — ${note}</div>
+                <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-slate-500">${chips}</div>
+            </div>`;
+        }
+        function refreshLegends() {
+            const html = buildLegendHTML();
+            ['fc-legend', 'exam-legend', 'learn-legend'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            });
+        }
+
+        // ===== แผงควบคุมการลงสี: เปิด/ปิด, ซิงค์ UI, รีเฟรชทุกแท็บ =====
+        function toggleColorSheet(force) {
+            const sheet = document.getElementById('color-sheet');
+            const back = document.getElementById('color-sheet-backdrop');
+            const open = (typeof force === 'boolean') ? force : !sheet.classList.contains('open');
+            sheet.classList.toggle('open', open);
+            back.classList.toggle('open', open);
+        }
+
+        function setColorPref(key, val) {
+            colorPrefs[key] = val;
+            saveColorPrefs(); syncColorPanelUI(); rerenderAllColored();
+        }
+        function setAllVowels(val) {
+            VOWEL_KEYS.forEach(k => colorPrefs[k] = val);
+            saveColorPrefs(); syncColorPanelUI(); rerenderAllColored();
+        }
+        function onBwToggle(val) {
+            bwMode = val;
+            saveColorPrefs(); syncColorPanelUI(); rerenderAllColored();
+        }
+        function resetColorPrefs() {
+            colorPrefs = { ...COLOR_DEFAULT }; bwMode = false;
+            saveColorPrefs(); syncColorPanelUI(); rerenderAllColored();
+        }
+        function colorPreset(which) {
+            bwMode = false;
+            if (which === 'rootonly') { colorPrefs = { root:true, fat:false, kas:false, dam:false, suk:false, shd:false, tan:false }; }
+            else if (which === 'vowelonly') { colorPrefs = { root:false, fat:true, kas:true, dam:true, suk:true, shd:true, tan:true }; }
+            saveColorPrefs(); syncColorPanelUI(); rerenderAllColored();
+        }
+
+        // ปรับหน้าตาสวิตช์ในแผงให้ตรงกับค่าปัจจุบัน
+        function syncColorPanelUI() {
+            const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v; };
+            setChk('sw-bw', bwMode);
+            setChk('sw-root', colorPrefs.root);
+            VOWEL_KEYS.forEach(k => setChk('sw-' + k, colorPrefs[k]));
+            setChk('sw-vowel-all', VOWEL_KEYS.every(k => colorPrefs[k]));
+            // เมื่อโหมดขาวดำเปิด → หรี่กลุ่มสีรายชนิด
+            const grp = document.getElementById('color-detail-group');
+            if (grp) grp.style.cssText = bwMode ? 'opacity:.4;pointer-events:none;transition:.2s' : 'transition:.2s';
+            const fab = document.getElementById('color-fab');
+            if (fab) fab.classList.toggle('is-bw', bwMode || VOWEL_KEYS.every(k=>!colorPrefs[k]) && !colorPrefs.root);
+            refreshLegends();
+        }
+
+        // วาดสีใหม่ทุกที่ที่กำลังแสดงอยู่ (ตาราง + แฟลชการ์ด + ห้องสอบ) โดยไม่รีเซ็ตความคืบหน้า
+        function rerenderAllColored() {
+            populateTable();
+            if (typeof showFlashcard === 'function' && document.getElementById('page-flashcard')) showFlashcard();
+            if (typeof rerenderExamCard === 'function') rerenderExamCard();
+        }
+
+        // ========== ตัววิเคราะห์: รูปแบบสระ / บับการผัน / หมวดความหมาย ==========
+        const _ALL_HK = ['\u064E','\u0650','\u064F','\u0652','\u0651','\u064B','\u064D','\u064C'];
+        const _isHK = c => _ALL_HK.indexOf(c) >= 0;
+        const _LONG = '\u0627\u0648\u064A\u0649';
+        const stripHarakat = s => [...(s || '')].filter(c => !_isHK(c)).join('');
+        const _baseOnly = s => [...(s || '')].filter(_isBaseLetter).join('');
+
+        // ป้ายฮะเราะกาตแบบอ่านง่าย (วางบนวงกลมจุด ◌)
+        function hkGlyphs(form) {
+            // คืนลำดับสระบนอักษรฐาน เป็นสัญลักษณ์วางบน ◌
+            const out = [];
+            const chars = [...form];
+            for (let i = 0; i < chars.length; i++) {
+                if (_isBaseLetter(chars[i])) {
+                    let mark = '';
+                    for (let j = i + 1; j < chars.length && _isHK(chars[j]); j++) mark += chars[j];
+                    out.push('\u25CC' + mark);
+                }
+            }
+            return out.join(' ');
+        }
+
+        // (1) ลายเซ็น "รูปแบบสระ": ลำดับฮะเราะกาตของทั้ง 3 สถานะรวมกัน — คำที่หน้าตาสระเหมือนกันจะกลุ่มเดียวกัน
+        function vowelSignature(idx) {
+            const it = vocabularyDatabase[idx];
+            const sigOf = f => [...(f || '')].filter(_isHK).join('') || '∅';
+            return sigOf(it.past) + '|' + sigOf(it.present) + '|' + sigOf(it.masdar);
+        }
+        function vowelGroupLabel(idx) {
+            const it = vocabularyDatabase[idx];
+            return `อดีต ${hkGlyphs(it.past)}　·　ปัจจุบัน ${hkGlyphs(it.present)}`;
+        }
+
+        // (2) บับการผัน (รูปแบบการเปลี่ยน 3 สถานะ) — best effort ตามหลักศ็อรฟ์
+        function harAfterBase(form, n) {
+            const a = [...form]; let bc = 0;
+            for (let i = 0; i < a.length; i++) {
+                if (_isBaseLetter(a[i])) {
+                    bc++;
+                    if (bc === n) { for (let j = i + 1; j < a.length; j++) { if (_isHK(a[j])) return a[j]; if (_isBaseLetter(a[j])) return null; } return null; }
+                }
+            }
+            return null;
+        }
+        function babClass(idx) {
+            const it = vocabularyDatabase[idx];
+            const pB = _baseOnly(it.past);
+            const root = rootOf(idx);
+            const rootBase = _baseOnly(root);
+            // รูปยาว/เพิ่มอักษร (มัซีด) หรือ รุบาอี
+            if (rootBase.length === 4) return { key:'quad', label:'รุบาอี (4 พยัญชนะ)', order:7 };
+            if (!root && pB.length >= 4 && !/[\u0627\u0648\u064A\u0649]/.test(pB)) return { key:'mazid', label:'รูปเพิ่มอักษร/มัซีด', order:8 };
+            // มุฎออัฟ (อักษรซ้ำ ّ)
+            if (it.past.includes('\u0651')) return { key:'dbl', label:'มุฎออัฟ — อักษรซ้ำ (شَدّะฮ์)', order:6 };
+            // อะญูฟ (กลางเป็นสระยาว)
+            if (pB.length === 3 && pB[1] === '\u0627') {
+                if (it.present.includes('\u0648')) return { key:'hollow_w', label:'อะญูฟ วาว (قَامَ–يَقُومُ)', order:4 };
+                if (it.present.includes('\u064A')) return { key:'hollow_y', label:'อะญูฟ ยา (سَارَ–يَسِيرُ)', order:4 };
+                return { key:'hollow', label:'อะญูฟ (กลางสระยาว)', order:4 };
+            }
+            // นากิศ (ลงท้ายสระยาว)
+            const lastP = pB[pB.length - 1];
+            if (pB.length <= 3 && '\u0627\u0648\u064A\u0649'.includes(lastP)) return { key:'defective', label:'นากิศ (ลงท้ายสระยาว)', order:5 };
+            // มิษาล (ขึ้นต้น و/ي)
+            const mithal = (pB[0] === '\u0648' || pB[0] === '\u064A');
+            // สามัญ 3 อักษร — อ่านสระกลางของอดีต+ปัจจุบัน
+            if (pB.length === 3) {
+                const pm = harAfterBase(it.past, 2);
+                const rm = harAfterBase(it.present, 3); // ข้ามอักษรนำของมุฎอเรี๊ยะอ์
+                const nm = h => h === '\u064E' ? 'a' : h === '\u0650' ? 'i' : h === '\u064F' ? 'u' : h === '\u0652' ? '°' : '?';
+                const key = nm(pm) + nm(rm);
+                const map = {
+                    'au': { label:'บับ 1 ฟัตฮ์–ฎ็อม (نَصَرَ–يَنْصُرُ)', order:1 },
+                    'ai': { label:'บับ 2 ฟัตฮ์–กัสร์ (ضَرَبَ–يَضْرِبُ)', order:1 },
+                    'aa': { label:'บับ 3 ฟัตฮ์–ฟัตฮ์ ฮัลกี (فَتَحَ–يَفْتَحُ)', order:1 },
+                    'ia': { label:'บับ 4 กัสร์–ฟัตฮ์ (سَمِعَ–يَسْمَعُ)', order:1 },
+                    'ii': { label:'บับ 5 กัสร์–กัสร์ (حَسِبَ–يَحْسِبُ)', order:2 },
+                    'uu': { label:'บับ 6 ฎ็อม–ฎ็อม (كَرُمَ–يَكْرُمُ)', order:2 },
+                };
+                if (map[key]) return { key:'bab_' + key, label:(mithal ? 'มิษาล · ' : '') + map[key].label, order:map[key].order };
+                return { key:'sound_other', label:(mithal ? 'มิษาล (ขึ้นต้น و/ي)' : 'สามัญอื่น ๆ'), order:9 };
+            }
+            return { key:'other', label:'วิเคราะห์อัตโนมัติไม่ได้', order:99 };
+        }
+
+        // (3) หมวดความหมาย / สถานการณ์ใช้งาน — จับคำสำคัญจากความหมายไทย
+        const SEM_CATS = [
+            ['อิบาดะฮ์ / ละหมาด', ['ละหมาด','ขอพร','ดุอา','รุกูอ์','สุญูด','กราบ','ภักดี','บูชา','ศีลอด','ถือศีล','ซะกาต','ฮัจญ์','รำลึก','ระลึก','สรรเสริญ','ตักบีร','สดุดี','สาบาน','สาธยาย','ศรัทธา','ปฏิเสธศรัทธา','บริสุทธิ์ใจ','เผยแผ่','เชิญชวน','ขอบคุณ','วิงวอน','ชำระล้าง']],
+            ['การกิน-ดื่ม / ทำอาหาร / เกษตร', ['กิน','ดื่ม','เคี้ยว','กลืน','ชิม','อิ่ม','หิว','ปรุง','ต้ม','ทอด','ผัด','ย่าง','ปิ้ง','นึ่ง','อบ','หุง','ลวก','เท','คั้น','คั่ว','หั่น','ปอก','ผสม','โรย','เก็บเกี่ยว','รดน้ำ','ปลูก','เพาะ','เด็ด','เกี่ยว','กลั้วคอ','อมน้ำ']],
+            ['ร่างกาย / กิจวัตร / สุขภาพ', ['นอน','หลับ','ตื่น','ลุก','ล้าง','อาบ','ถ่าย','ปัสสาวะ','อุจจาระ','ขับถ่าย','สวม','ใส่','ถอด','หวี','แปรง','ไอ','จาม','ป่วย','เจ็บ','หาย','เหนื่อย','พักผ่อน','พัก','หายใจ','หาว','สะอึก','เกา','โต','เติบโต','รีด','นาบ']],
+            ['การเคลื่อนไหว / เดินทาง', ['เดิน','วิ่ง','ไป','มา','กลับ','ขึ้น','ลง','เข้า','ออก','นั่ง','ยืน','หยุด','ขับ','โดยสาร','ขี่','บิน','ว่าย','ปีน','กระโดด','คลาน','เลื่อน','หมุน','ตก','ล้ม','ไหล','แล่น','ย้าย','ตาม','หนี','ไล่','มุ่ง','ถึง','ผ่าน','เลี้ยว','ข้าม','กลิ้ง','ส่ง','ทิ้ง','ฟุ้งกระจาย','กระจาย','โบกสะบัด','พริ้ว','สั่น','คลอน','กระพือ']],
+            ['การรับรู้ / ประสาทสัมผัส', ['เห็น','มอง','ดู','ได้ยิน','ฟัง','ดม','สูด','สัมผัส','แตะ','รู้สึก','รับรู้','สังเกต','จ้อง','เพ่ง']],
+            ['ความคิด / จิตใจ / ความรู้', ['คิด','รู้','เข้าใจ','จำ','ท่อง','ลืม','เชื่อ','สงสัย','คาดเดา','เดา','นึก','ใคร่ครวญ','พิจารณา','ตัดสินใจ','ตั้งใจ','ปัญญา','ฉลาด','วางแผน','ฝัน','หวัง','สิ้นหวัง','มั่นใจ','แน่ใจ','อ้างอิง','สงบ']],
+            ['อารมณ์ / ความรู้สึก', ['รัก','ชอบ','เกลียด','โกรธ','โมโห','ดีใจ','เสียใจ','เศร้า','กลัว','ตกใจ','หัวเราะ','ยิ้ม','ร้องไห้','กลุ้ม','กังวล','อิจฉา','พอใจ','ยินดี','รังเกียจ','สงสาร','เห็นใจ','อยาก','ปรารถนา','ต้องการ','เบื่อ','ขยะแขยง','ตื่นเต้น','สบายใจ','อดทน','ภูมิใจ','รำคาญ','หนักใจ']],
+            ['การเรียน / อ่าน-เขียน', ['อ่าน','เขียน','เรียน','สอน','ศึกษา','ท่องจำ','จด','บันทึก','ลบ','วาด','คัด','ขีด','พิมพ์','นับ','คำนวณ','สอบ','ทบทวน','แปล','เซ็นชื่อ','เลียนแบบ','สาธิต','แสดง','ชี้แนะ','ชี้']],
+            ['การพูด / สื่อสาร', ['พูด','บอก','กล่าว','เล่า','ถาม','ตอบ','เรียก','ร้อง','ตะโกน','กระซิบ','สนทนา','คุย','อธิบาย','ประกาศ','เตือน','แนะนำ','ตักเตือน','สัญญา','ปรึกษา','ด่า','ชม','ทักทาย','โกหก','หลอก','นินทา','บ่น','ร้องเรียน','สั่ง','ห้าม','ขอ','อภิปราย','แจ้ง','อำลา','เชิญ']],
+            ['การงาน / ค้าขาย / ทรัพย์', ['ทำงาน','สร้าง','ผลิต','ซื้อ','ขาย','ค้า','จ่าย','เงิน','ราคา','ยืม','คืน','เช่า','จ้าง','ลงทุน','กำไร','ขาดทุน','ครอบครอง','เป็นเจ้าของ','แลก','ให้','มอบ','แจก','ออม','ขโมย','ปล้น','โกง','หา','ค้นหา','พบ','เจอ','ได้','รับ','เอา','ฟุ่มเฟือย','จุดไฟ']],
+            ['สังคม / ความสัมพันธ์ / การต่อสู้', ['ฆ่า','ต่อสู้','สู้รบ','แข่งขัน','ประลอง','เผชิญหน้า','ต่อต้าน','ปฏิสัมพันธ์','ร่วมเพศ','เยี่ยมเยียน','ประพฤติ','พยายาม','สนามเพลาะ','ช่วยเหลือ','ช่วย','ปกป้อง','คุ้มครอง','เป็นพยาน','ร่วม','ชนะ','แพ้']],
+            ['การกระทำต่อสิ่งของ / จัดการ', ['เปิด','ปิด','ยก','วาง','ตั้ง','ถือ','โยน','ขว้าง','ปา','ดึง','ผลัก','ดัน','ตี','ต่อย','ทุบ','ชน','ตัด','ฉีก','เจาะ','มัด','ผูก','แก้','คลาย','พับ','ม้วน','กาง','ทำลาย','ซ่อม','เช็ด','ถู','ปัด','กวาด','ทา','ป้าย','รวบรวม','รวม','แบ่ง','แยก','เรียง','จัด','เติม','ใส่','ตบ','ลูบ','กด','ทับ']],
+            ['สภาวะ / การเป็นไป', ['เป็น','คือ','กลายเป็น','อยู่','มี','เกิด','ตาย','เริ่ม','จบ','สิ้นสุด','คงอยู่','มั่นคง','เปลี่ยน','เพิ่ม','ลด','ขาด','เหลือ','เต็ม','ปรากฏ','ซ่อน','สูญ','เสีย','พัง','แตก','ไหม้','ชนะ','แพ้','ทำ','กระทำ']],
+        ];
+        function semCategory(idx) {
+            const th = vocabularyDatabase[idx].th;
+            for (const [name, kws] of SEM_CATS) for (const k of kws) if (th.includes(k)) return name;
+            return 'อื่น ๆ';
+        }
+
+        // ===== High-fidelity speech engine: ช้า ชัด เป็นจังหวะ ตามหลักฟัตฮุลเราะห์มาน =====
+        // ทำความสะอาดข้อความ: ตัด HTML, ตัวอักษรไทย และอักษรละตินที่ปนเข้ามาออกให้หมด
+        function cleanArabic(text) {
+            return (text || '')
+                .replace(/<\/?[^>]+(>|$)/g, "")   // ตัดแท็ก HTML (เช่น span ไฮไลต์รากศัพท์)
+                .replace(/[\u0E00-\u0E7F]/g, "")  // ตัดอักษรไทยที่หลงเข้ามา
+                .replace(/[A-Za-z]/g, "")         // ตัดอักษรละตินที่หลงเข้ามา
+                .replace(/[!,]/g, " ")            // แปลงตัวคั่นแปลกปลอมเป็นช่องว่าง
+                .trim();
+        }
+
+        // เลือกเสียงภาษาอาหรับที่ดีที่สุดเท่าที่อุปกรณ์มีให้
+        function pickArabicVoice() {
+            const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+            return vs.find(v => /ar[-_]SA/i.test(v.lang)) ||
+                   vs.find(v => /^ar/i.test(v.lang)) || null;
+        }
+
+        // อ่านทีละสถานะ (อดีต → ปัจจุบัน → อาการนาม) แยกประโยค เว้นจังหวะให้ชัด
+        function speakArabicForms(forms) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const parts = forms.map(cleanArabic).filter(Boolean);
+            const voice = pickArabicVoice();
+            let i = 0;
+            const sayNext = () => {
+                if (i >= parts.length) return;
+                const u = new SpeechSynthesisUtterance(parts[i]);
+                u.lang = 'ar-SA';
+                if (voice) u.voice = voice;
+                u.rate = 0.4;   // ช้า ชัด เน้นสระตายสุกูนได้เต็มเสียง
+                u.pitch = 1;
+                u.onend = () => { i++; setTimeout(sayNext, 480); }; // เว้นจังหวะระหว่างสถานะ
+                window.speechSynthesis.speak(u);
+            };
+            sayNext();
+        }
+
+        // อ่านทั้งรายการคำศัพท์ครบสามสถานะ
+        function speakItem(idx) {
+            const it = vocabularyDatabase[idx];
+            if (it) speakArabicForms([it.past, it.present, it.masdar]);
+        }
+
+        // บางเบราว์เซอร์โหลดรายชื่อเสียงแบบ asynchronous — กระตุ้นให้โหลดไว้ล่วงหน้า
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
+
+        // Initialize App components
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadColorPrefs();
+            syncColorPanelUI();
+            loadSel();
+            loadSrs();
+            refreshLegends();
+            populateTable();
+            refreshFlashcardPool(false);
+            document.addEventListener('keydown', (e) => {
+                const onFc = document.getElementById('page-flashcard') && !document.getElementById('page-flashcard').classList.contains('hidden');
+                if (!onFc) return;
+                const tag = (e.target.tagName || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea') return;
+                if (e.code === 'Space') { e.preventDefault(); flipFlashcard(); }
+                else if (fcMode === 'srs' && !document.getElementById('fc-grade-row').classList.contains('hidden')) {
+                    if (e.key === '1') gradeFlashcard('again');
+                    else if (e.key === '2') gradeFlashcard('good');
+                    else if (e.key === '3') gradeFlashcard('easy');
+                } else {
+                    if (e.key === 'ArrowLeft') prevFlashcard();
+                    else if (e.key === 'ArrowRight') nextFlashcard();
+                }
+            });
+        });
+
+        function switchTab(id) {
+            ['learn', 'flashcard', 'exam', 'stats'].forEach(t => {
+                document.getElementById(`tab-${t}`).className = t === id ?
+                    "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 bg-indigo-600 text-white shadow-md" :
+                    "px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 text-slate-300 hover:text-white";
+                document.getElementById(`page-${t}`).classList.toggle('hidden', t !== id);
+            });
+            if (id === 'flashcard') refreshFlashcardPool(false);
+            if (id === 'stats') renderStats();
+            lucide.createIcons();
+        }
+
+        // ==================== TAB 4: STATS DASHBOARD ====================
+        let statsView = 'month';
+        function setStatsView(v) {
+            statsView = v;
+            document.querySelectorAll('#stats-view-seg button').forEach(b => b.classList.toggle('active', b.dataset.sv === v));
+            renderStats();
+        }
+        function _statsGroupKey(idx) {
+            if (statsView === 'month') return 'เดือน ' + monthOf(idx);
+            if (statsView === 'bab')   return babClass(idx).label;
+            return semCategory(idx);
+        }
+        function _statsGroupOrder(key, members) {
+            if (statsView === 'month') return parseInt(key.replace(/\D/g, ''), 10) || 999;
+            if (statsView === 'bab')   return babClass(members[0]).order;
+            return -members.length;   // หมวด: กลุ่มใหญ่ก่อน
+        }
+        function renderStats() {
+            const N = vocabularyDatabase.length;
+            let learning = 0, mastered = 0, weak = 0, due = 0;
+            for (let i = 0; i < N; i++) {
+                const st = srsState(i);
+                if (st === 'mastered') mastered++; else if (st === 'learning') learning++;
+                if (isWeak(i)) weak++;
+                if (isDue(i)) due++;
+            }
+            const setT = (id, v) => { const e = document.getElementById(id); if (e) e.innerText = v; };
+            setT('ov-total', N); setT('ov-learning', learning); setT('ov-mastered', mastered);
+            setT('ov-weak', weak); setT('ov-due', due);
+            const pct = N ? Math.round(mastered / N * 100) : 0;
+            setT('ov-pct', pct);
+            const pb = document.getElementById('ov-progressbar'); if (pb) pb.style.width = pct + '%';
+            document.getElementById('stats-col0').innerText = statsView === 'month' ? 'เดือน' : (statsView === 'bab' ? 'บับการผัน' : 'หมวดความหมาย');
+
+            const groups = {};
+            for (let i = 0; i < N; i++) { const k = _statsGroupKey(i); (groups[k] = groups[k] || []).push(i); }
+            const keys = Object.keys(groups).sort((a, b) => _statsGroupOrder(a, groups[a]) - _statsGroupOrder(b, groups[b]));
+            let html = '';
+            keys.forEach(k => {
+                const mem = groups[k];
+                let g = { learning: 0, mastered: 0, weak: 0, due: 0 };
+                mem.forEach(i => {
+                    const st = srsState(i);
+                    if (st === 'mastered') g.mastered++; else if (st === 'learning') g.learning++;
+                    if (isWeak(i)) g.weak++;
+                    if (isDue(i)) g.due++;
+                });
+                const acc = mem.length ? Math.round(g.mastered / mem.length * 100) : 0;
+                html += `<tr>
+                    <td>${k}</td>
+                    <td>${mem.length}</td>
+                    <td>${g.learning ? `<span class="box-badge pill-learn">${g.learning}</span>` : '<span class="text-slate-300">0</span>'}</td>
+                    <td>${g.mastered ? `<span class="box-badge pill-mast">${g.mastered}</span>` : '<span class="text-slate-300">0</span>'}</td>
+                    <td>${g.weak ? `<span class="box-badge pill-due">${g.weak}</span>` : '<span class="text-slate-300">0</span>'}</td>
+                    <td>${g.due ? `<span class="box-badge" style="background:#fef3c7;color:#b45309">${g.due}</span>` : '<span class="text-slate-300">0</span>'}</td>
+                    <td class="barcell"><div class="accbar"><span style="width:${acc}%"></span></div><span class="text-[10px] text-slate-400">${acc}%</span></td>
+                </tr>`;
+            });
+            document.getElementById('stats-tbody').innerHTML = html;
+        }
+        function exportProgressReset() {
+            if (!confirm('ล้างสถิติการทบทวน SRS ทั้งหมด? (คำที่เลือกไว้และค่าสีจะยังอยู่ แต่ระดับความจำทุกคำจะกลับไปเริ่มต้น)')) return;
+            srsData = {}; saveSrs();
+            missedSet = new Set(); masteredSet = new Set(); saveSel();
+            renderStats(); syncSelectionEverywhere(); refreshFlashcardPool(false);
+        }
+
+        // ==================== PRACTICE-SET SELECTION (แบ่งตามเดือน) ====================
+        const WORDS_PER_MONTH = 50;
+        const MONTH_COUNT = Math.ceil(vocabularyDatabase.length / WORDS_PER_MONTH); // 10
+        const monthOf = i => Math.floor(i / WORDS_PER_MONTH) + 1;
+        const monthIndices = m => {
+            const out = [];
+            for (let i = (m - 1) * WORDS_PER_MONTH; i < m * WORDS_PER_MONTH && i < vocabularyDatabase.length; i++) out.push(i);
+            return out;
+        };
+
+        let selectedSet = new Set();        // คำที่เลือกไว้ฝึก
+        let missedSet   = new Set();        // คำที่เคยท่องผิด (จำข้ามรอบ)
+        let masteredSet = new Set();        // คำที่สอบผ่านแล้ว
+        let monthFilter = 1;                // กำลังดูเดือนไหนในตาราง
+
+        function setDefaultSelection() { selectedSet = new Set(monthIndices(1)); } // เริ่มต้น = เดือน 1
+
+        function saveSel() {
+            try {
+                localStorage.setItem('kuru_selected', JSON.stringify([...selectedSet]));
+                localStorage.setItem('kuru_missed',   JSON.stringify([...missedSet]));
+                localStorage.setItem('kuru_mastered', JSON.stringify([...masteredSet]));
+                localStorage.setItem('kuru_month', String(monthFilter));
+            } catch (e) { /* แซนด์บ็อกซ์อาจปิด localStorage — ใช้ในหน่วยความจำแทน */ }
+        }
+        function loadSel() {
+            let hadSaved = false;
+            try {
+                const s = JSON.parse(localStorage.getItem('kuru_selected'));
+                if (Array.isArray(s)) { selectedSet = new Set(s.filter(i => i >= 0 && i < vocabularyDatabase.length)); hadSaved = true; }
+                const m = JSON.parse(localStorage.getItem('kuru_missed'));
+                if (Array.isArray(m)) missedSet = new Set(m.filter(i => i >= 0 && i < vocabularyDatabase.length));
+                const k = JSON.parse(localStorage.getItem('kuru_mastered'));
+                if (Array.isArray(k)) masteredSet = new Set(k.filter(i => i >= 0 && i < vocabularyDatabase.length));
+                const mf = parseInt(localStorage.getItem('kuru_month'), 10);
+                if (mf >= 1 && mf <= MONTH_COUNT) monthFilter = mf;
+            } catch (e) { /* ไม่มีข้อมูลเดิม */ }
+            if (!hadSaved) setDefaultSelection();
+        }
+
+        function getSelectedItems() { return vocabularyDatabase.filter((_, i) => selectedSet.has(i)); }
+
+        function toggleSelect(i, checked) {
+            if (checked) selectedSet.add(i); else selectedSet.delete(i);
+            saveSel(); populateTable();
+        }
+
+        // --- เลือกตามเดือน ---
+        function setMonthFilter(m) { monthFilter = m; saveSel(); populateTable(); }
+        function selectMonth(add) {
+            monthIndices(monthFilter).forEach(i => add ? selectedSet.add(i) : selectedSet.delete(i));
+            saveSel(); populateTable();
+        }
+        function selectUnmasteredThisMonth() {
+            // เคลียร์การเลือกของเดือนนี้ แล้วเลือกเฉพาะคำที่ยังไม่ผ่าน
+            selectedSet = new Set([...selectedSet].filter(i => monthOf(i) !== monthFilter));
+            monthIndices(monthFilter).forEach(i => { if (!masteredSet.has(i)) selectedSet.add(i); });
+            saveSel(); populateTable();
+        }
+        // --- เลือกแบบรวม ---
+        function selectAll()       { selectedSet = new Set(vocabularyDatabase.map((_, i) => i)); saveSel(); populateTable(); }
+        function selectNone()      { selectedSet = new Set(); saveSel(); populateTable(); }
+        function selectMissedOnly(){ selectedSet = new Set([...missedSet]); saveSel(); populateTable(); }
+
+        // วาดแถบชิปเลือกเดือน พร้อมจำนวนที่เลือกในแต่ละเดือน
+        function renderMonthChips() {
+            const bar = document.getElementById('month-chip-bar');
+            if (!bar) return;
+            let html = '';
+            for (let m = 1; m <= MONTH_COUNT; m++) {
+                const idxs = monthIndices(m);
+                const selCnt = idxs.filter(i => selectedSet.has(i)).length;
+                const active = m === monthFilter;
+                const lo = (m - 1) * WORDS_PER_MONTH + 1, hi = Math.min(m * WORDS_PER_MONTH, vocabularyDatabase.length);
+                html += `<button onclick="setMonthFilter(${m})" title="คำที่ ${lo}–${hi}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${active
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                    เดือน ${m}${selCnt ? ` <span class="${active ? 'text-indigo-100' : 'text-indigo-500'}">(${selCnt})</span>` : ''}
+                </button>`;
+            }
+            bar.innerHTML = html;
+        }
+
+        function updateSelectionUI() {
+            const n = selectedSet.size;
+            const badge = document.getElementById('selected-count-badge');
+            if (badge) badge.innerText = `เลือกฝึก ${n} คำ`;
+            const mc = document.getElementById('missed-count');
+            if (mc) mc.innerText = missedSet.size;
+            const bm = document.getElementById('btn-select-missed');
+            if (bm) bm.disabled = missedSet.size === 0;
+            const es = document.getElementById('exam-selected-count');
+            if (es) es.innerText = n;
+            const fcb = document.getElementById('fc-scope-badge');
+            if (fcb) fcb.innerText = `เลือกฝึก ${n} คำ`;
+            renderMonthChips();
+        }
+
+        // ==================== TAB 1: TABLE FRAMEWORK ====================
+        let tableQuery = '';
+        let viewMode = 'month';     // month | vowel | bab | sem
+        let scopeMonths = new Set();   // เดือนที่รวมอยู่ในมุมมองจัดกลุ่ม (เลือกได้หลายเดือน)
+        for (let m = 1; m <= MONTH_COUNT; m++) scopeMonths.add(m);   // ค่าเริ่มต้น = ทุกเดือน (เห็นแพตเทิร์นข้ามเดือน)
+
+        const VIEW_HINTS = {
+            vowel: 'จัดกลุ่ม “รูปแบบสระ” — คำที่ลำดับสระทั้ง 3 สถานะเหมือนกันจะอยู่ด้วยกัน ช่วยให้เห็นแพตเทิร์นว่าคำไหนสระอะไร (◌ = ตำแหน่งอักษร)',
+            bab:   'จัดกลุ่ม “บับการผัน” — คำที่เปลี่ยน 3 สถานะแบบเดียวกัน (บับเดียวกัน เช่น نَصَرَ-يَنْصُرُ) อยู่ด้วยกัน',
+            sem:   'จัดกลุ่ม “ความหมาย/สถานการณ์ใช้งาน” — ระบบจัดหมวดให้อัตโนมัติว่าคำไหนใช้ตอนไหน',
+        };
+
+        function setViewMode(m) {
+            viewMode = m;
+            document.querySelectorAll('#view-mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.vm === m));
+            document.getElementById('scope-wrap').classList.toggle('hidden', m === 'month');
+            if (m !== 'month') renderScopeChips();
+            const hint = document.getElementById('view-mode-hint');
+            if (m === 'month') { hint.classList.add('hidden'); }
+            else { hint.textContent = VIEW_HINTS[m]; hint.classList.remove('hidden'); }
+            populateTable();
+        }
+
+        // ชิปเลือกเดือนของ “ขอบเขต” — หน้าตาเหมือนแถบ “เลือกคำที่จะฝึก”
+        function renderScopeChips() {
+            const bar = document.getElementById('scope-month-bar');
+            if (!bar) return;
+            let html = '';
+            for (let m = 1; m <= MONTH_COUNT; m++) {
+                const idxs = monthIndices(m);
+                const cnt = idxs.length;
+                const on = scopeMonths.has(m);
+                const lo = (m - 1) * WORDS_PER_MONTH + 1, hi = Math.min(m * WORDS_PER_MONTH, vocabularyDatabase.length);
+                html += `<button onclick="toggleScopeMonth(${m})" title="คำที่ ${lo}–${hi}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${on
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                    เดือน ${m} <span class="${on ? 'text-indigo-100' : 'text-slate-400'}">(${cnt})</span>
+                </button>`;
+            }
+            bar.innerHTML = html;
+        }
+        function toggleScopeMonth(m) {
+            if (scopeMonths.has(m)) { if (scopeMonths.size > 1) scopeMonths.delete(m); }   // เหลืออย่างน้อย 1 เดือน
+            else scopeMonths.add(m);
+            renderScopeChips(); populateTable();
+        }
+        function scopeAllMonths() {
+            scopeMonths = new Set();
+            for (let m = 1; m <= MONTH_COUNT; m++) scopeMonths.add(m);
+            renderScopeChips(); populateTable();
+        }
+        function scopeThisMonthOnly() {
+            scopeMonths = new Set([monthFilter]);
+            renderScopeChips(); populateTable();
+        }
+
+        // ค้นหา: เทียบความหมายไทย หรือ อักษรอาหรับ (ตัดฮะเราะกาตให้พิมพ์ตัวเปล่าได้)
+        function matchQuery(idx, q) {
+            if (!q) return true;
+            const it = vocabularyDatabase[idx];
+            if (it.th.includes(q)) return true;
+            const qb = stripHarakat(q);
+            if (!qb) return false;
+            return [it.past, it.present, it.masdar].some(f => stripHarakat(f).includes(qb));
+        }
+
+        // สร้างแถวคำศัพท์หนึ่งแถว (showMonth = โชว์ป้ายเดือนเมื่อค้น/จัดกลุ่มข้ามเดือน)
+        function vocabRowHTML(idx, showMonth) {
+            const item = vocabularyDatabase[idx];
+            const isSel = selectedSet.has(idx);
+            const isMissed = missedSet.has(idx);
+            const isMastered = masteredSet.has(idx);
+            const monthTag = showMonth ? `<span class="ml-1 text-[9px] font-black text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full align-middle">ด.${monthOf(idx)}</span>` : '';
+            return `<tr class="${isSel ? 'bg-indigo-50/40 ' : ''}hover:bg-slate-50 transition-colors">
+                    <td class="py-3 px-3 text-center">
+                        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleSelect(${idx}, this.checked)" class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                    </td>
+                    <td class="py-3 px-4 text-center font-bold text-slate-400 text-xs">${idx + 1}</td>
+                    <td class="py-3 px-6 font-bold text-slate-800 border-l-4 ${isSel ? 'border-indigo-500' : 'border-slate-200'} bg-indigo-50/10">
+                        ${item.th}${monthTag}
+                        ${isMastered ? '<span class="ml-1 text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full align-middle">ผ่านแล้ว</span>' : ''}
+                        ${isMissed ? '<span class="ml-1 text-[9px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full align-middle">เคยผิด</span>' : ''}
+                    </td>
+                    <td class="py-3 px-6 text-right font-arabic text-2xl bg-red-50/20">${renderForm(idx,'past')}</td>
+                    <td class="py-3 px-6 text-right font-arabic text-xl bg-emerald-50/20">${renderForm(idx,'present')}</td>
+                    <td class="py-3 px-6 text-right font-arabic text-xl bg-amber-50/20">${renderForm(idx,'masdar')}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="speakItem(${idx})" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>`;
+        }
+        function groupHeaderHTML(label, count, sub) {
+            return `<tr class="group-row"><td colspan="7" class="py-2.5 px-4">
+                <span class="group-pill"><i data-lucide="folder" class="w-3.5 h-3.5"></i> ${label} <span class="group-count">${count} คำ</span></span>
+                ${sub ? `<span class="ml-2 font-arabic text-base text-slate-500" dir="rtl">${sub}</span>` : ''}
+            </td></tr>`;
+        }
+
+        function populateTable(q = tableQuery) {
+            tableQuery = q;
+            const body = document.getElementById('vocab-table-body');
+            const searching = !!q;
+            // ขอบเขตของแถวที่จะแสดง — ค้นหา = ข้ามทุกเดือนเสมอ
+            let scopeIdx;
+            const allIdx = vocabularyDatabase.map((_, i) => i);
+            if (searching) {
+                scopeIdx = allIdx;
+            } else if (viewMode === 'month') {
+                scopeIdx = allIdx.filter(i => monthOf(i) === monthFilter);
+            } else {
+                scopeIdx = allIdx.filter(i => scopeMonths.has(monthOf(i)));
+            }
+            const showMonth = searching || (viewMode !== 'month' && scopeMonths.size !== 1);
+            const filtered = scopeIdx.filter(i => matchQuery(i, q));
+
+            let html = '', visible = filtered.length;
+
+            if (viewMode === 'month') {
+                html = filtered.map(i => vocabRowHTML(i, showMonth)).join('');
+                if (!visible) html = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">ไม่พบคำที่ตรงกับ “${q}”</td></tr>`;
+            } else {
+                // จัดกลุ่ม
+                const groups = new Map(); // key -> {label, sub, items:[]}
+                filtered.forEach(i => {
+                    let key, label, sub = '';
+                    if (viewMode === 'vowel') { key = vowelSignature(i); label = vowelGroupLabel(i); }
+                    else if (viewMode === 'bab') { const b = babClass(i); key = b.key; label = b.label; }
+                    else { key = semCategory(i); label = key; }
+                    if (!groups.has(key)) groups.set(key, { label, sub, items: [] });
+                    groups.get(key).items.push(i);
+                });
+                // เรียงกลุ่ม: บับ -> ตามลำดับหลักศ็อรฟ์, อื่น ๆ -> ตามจำนวนมากไปน้อย
+                let entries = [...groups.entries()];
+                if (viewMode === 'bab') {
+                    const ord = k => { const it = groups.get(k).items[0]; return babClass(it).order; };
+                    entries.sort((a, b) => ord(a[0]) - ord(b[0]) || b[1].items.length - a[1].items.length);
+                } else {
+                    entries.sort((a, b) => b[1].items.length - a[1].items.length);
+                }
+                html = entries.map(([k, g]) =>
+                    groupHeaderHTML(g.label, g.items.length, g.sub) + g.items.map(i => vocabRowHTML(i, showMonth)).join('')
+                ).join('');
+                if (!visible) html = `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">ไม่พบคำในขอบเขตนี้</td></tr>`;
+            }
+            body.innerHTML = html;
+
+            const monthSel = monthIndices(monthFilter).filter(i => selectedSet.has(i)).length;
+            const scopeDesc = scopeMonths.size >= MONTH_COUNT ? 'ทุกเดือน'
+                : (scopeMonths.size === 1 ? 'เดือน ' + [...scopeMonths][0] : scopeMonths.size + ' เดือน');
+            const scopeTxt = viewMode === 'month'
+                ? (searching ? `ค้นข้ามทุกเดือน • พบ ${visible}` : `เดือน ${monthFilter}: เลือก ${monthSel}/50`)
+                : `${scopeDesc} • ${visible} คำ` + (searching ? ` (ค้น “${q}”)` : '');
+            document.getElementById('vocab-count-indicator').innerText = `รวมเลือกฝึก ${selectedSet.size}/500 • ${scopeTxt}`;
+            updateSelectionUI();
+            lucide.createIcons();
+        }
+        function filterVocab() { populateTable(document.getElementById('vocab-search').value); }
+
+        // ==================== SRS ENGINE (ทบทวนแบบเว้นช่วง) ====================
+        const SRS_KEY = 'kuru_srs';
+        const SRS_MAX_BOX = 5;
+        const SRS_DAYS = [0, 1, 3, 7, 16, 35];   // ช่วงทบทวน (วัน) ตามระดับกล่อง
+        const DAY_MS = 86400000;
+        let srsData = {};   // { idx: {box, due, reps, lapses, last} }
+
+        function loadSrs() { try { const s = JSON.parse(localStorage.getItem(SRS_KEY)); if (s && typeof s === 'object') srsData = s; } catch (e) {} }
+        function saveSrs() { try { localStorage.setItem(SRS_KEY, JSON.stringify(srsData)); } catch (e) {} }
+        function isNew(idx)  { const r = srsData[idx]; return !r || !r.reps; }
+        function isDue(idx)  { const r = srsData[idx]; return !!(r && r.reps && (r.due || 0) <= Date.now()); }
+        function srsState(idx) { const r = srsData[idx]; if (!r || !r.reps) return 'new'; if (r.box >= SRS_MAX_BOX) return 'mastered'; return 'learning'; }
+        function isWeak(idx) { if (missedSet.has(idx)) return true; const r = srsData[idx]; return !!(r && r.reps && r.box <= 1); }
+        function srsBox(idx) { const r = srsData[idx]; return r ? (r.box || 0) : 0; }
+
+        function gradeSrs(idx, grade) {
+            let r = srsData[idx] || { box: 0, due: 0, reps: 0, lapses: 0 };
+            if (grade === 'again') {
+                r.box = 0; r.lapses = (r.lapses || 0) + 1; r.due = Date.now();
+                missedSet.add(idx); masteredSet.delete(idx);
+            } else {
+                const step = grade === 'easy' ? 2 : 1;
+                r.box = Math.min(SRS_MAX_BOX, (r.box || 0) + step);
+                r.due = Date.now() + SRS_DAYS[r.box] * DAY_MS;
+                if (r.box >= 2) missedSet.delete(idx);
+                if (r.box >= SRS_MAX_BOX) masteredSet.add(idx);
+            }
+            r.reps = (r.reps || 0) + 1; r.last = Date.now();
+            srsData[idx] = r; saveSrs(); saveSel();
+        }
+
+        // ==================== TAB 2: FLASHCARD SYSTEM (+SRS) ====================
+        let fcIndex = 0;
+        let fcFrontType = 'th';
+        let fcMode = 'srs';            // srs | weak | all | random
+        let fcPool = [];               // คิวทำงาน = อาเรย์ของ index ในคลัง
+        let fcFrontPerCard = {};       // ฟิลด์ที่สุ่มได้ของแต่ละใบ (เมื่อโหมดหน้าโจทย์ = สุ่ม)
+        const FRONT_FIELDS = ['th', 'past', 'present', 'masdar'];
+
+        function buildFcQueue() {
+            const base = [...selectedSet];
+            if (fcMode === 'weak') {
+                return base.filter(isWeak).sort((a, b) => srsBox(a) - srsBox(b));
+            }
+            if (fcMode === 'srs') {
+                const q = base.filter(i => isNew(i) || isDue(i));
+                q.sort((a, b) => {
+                    const wa = isWeak(a) ? 0 : 1, wb = isWeak(b) ? 0 : 1;
+                    if (wa !== wb) return wa - wb;                 // จุดอ่อนก่อน
+                    const na = isNew(a) ? 1 : 0, nb = isNew(b) ? 1 : 0;
+                    if (na !== nb) return na - nb;                 // คำที่ครบกำหนดก่อนคำใหม่
+                    return ((srsData[a]?.due) || 0) - ((srsData[b]?.due) || 0);
+                });
+                return q;
+            }
+            if (fcMode === 'random') return base.slice().sort(() => Math.random() - 0.5);
+            return base.slice().sort((a, b) => a - b);            // all
+        }
+
+        function refreshFlashcardPool(reshuffle) {
+            fcPool = buildFcQueue();
+            if (reshuffle && fcMode !== 'srs') fcPool.sort(() => Math.random() - 0.5);
+            fcIndex = 0; fcFrontPerCard = {};
+            updateFcScopeUI();
+            showFlashcard();
+        }
+
+        function setFcMode(m) {
+            fcMode = m;
+            document.querySelectorAll('#fc-mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.fm === m));
+            refreshFlashcardPool(false);
+        }
+
+        function setFlashcardFrontSide(type) {
+            fcFrontType = type;
+            document.querySelectorAll('#fc-front-seg button').forEach(b => b.classList.toggle('active', b.dataset.ff === type));
+            fcFrontPerCard = {};
+            showFlashcard();
+        }
+
+        function resolveFront(pos) {
+            if (fcFrontType !== 'random') return fcFrontType;
+            if (!fcFrontPerCard[pos]) fcFrontPerCard[pos] = FRONT_FIELDS[Math.floor(Math.random() * 4)];
+            return fcFrontPerCard[pos];
+        }
+
+        function _frontHTML(idx, field) {
+            const it = vocabularyDatabase[idx];
+            if (field === 'th')      return `<p class="text-xs text-slate-400 mb-1">ความหมายไทย</p><h3 class="text-3xl font-black text-indigo-900">${it.th}</h3>`;
+            if (field === 'past')    return `<p class="text-xs text-slate-400 mb-2">กริยาอดีต (มาฎี)</p><h3 class="font-arabic text-5xl ar-word">${renderArabic(it.past, rootOf(idx))}</h3>`;
+            if (field === 'present') return `<p class="text-xs text-slate-400 mb-2">กริยาปัจจุบัน (มุฎอเรี๊ยะอ์)</p><h3 class="font-arabic text-5xl ar-word">${renderArabic(it.present, rootOf(idx), true)}</h3>`;
+            return `<p class="text-xs text-slate-400 mb-2">อาการนาม (مَصْدَر)</p><h3 class="font-arabic text-5xl ar-word">${renderArabic(it.masdar, rootOf(idx))}</h3>`;
+        }
+
+        function _statusBadge(idx) {
+            const st = srsState(idx), r = srsData[idx];
+            if (st === 'mastered') return '<span class="box-badge pill-mast">★ แม่นแล้ว</span>';
+            if (st === 'new')      return '<span class="box-badge pill-new">คำใหม่</span>';
+            let dots = '<span class="srs-dots">';
+            for (let k = 1; k <= SRS_MAX_BOX; k++) dots += `<i class="${(r && r.box >= k) ? 'fill' : ''}"></i>`;
+            dots += '</span>';
+            const weak = isWeak(idx) ? '<span class="box-badge pill-due" style="margin-left:5px">จุดอ่อน</span>' : '';
+            return `<span class="box-badge pill-learn">ระดับ ${r ? r.box : 0}/${SRS_MAX_BOX}</span> ${dots}${weak}`;
+        }
+
+        function showFlashcard() {
+            const inner = document.getElementById('flashcard-inner');
+            if (!inner) return;
+            inner.classList.remove('card-flipped');
+            document.getElementById('fc-grade-row').classList.add('hidden');
+            document.getElementById('fc-grade-row').classList.remove('flex');
+            const frontBox = document.getElementById('flashcard-front-content');
+            const statusEl = document.getElementById('fc-card-status');
+
+            if (fcPool.length === 0) {
+                document.getElementById('flashcard-index').innerText = `—`;
+                if (statusEl) statusEl.innerHTML = '';
+                const msg = fcMode === 'srs'
+                    ? 'ไม่มีคำที่ครบกำหนดทบทวนในขอบเขตนี้ 🎉<br>ลองเปลี่ยนเป็นโหมด “ทั้งหมด” หรือเพิ่มคำในขอบเขต'
+                    : (fcMode === 'weak'
+                        ? 'ยังไม่มีจุดอ่อนในขอบเขตนี้ — เก่งมาก!'
+                        : 'ยังไม่ได้เลือกคำ — เลือกขอบเขตด้านบน หรือกด “ทั้งหมด 500”');
+                frontBox.innerHTML = `<p class="text-sm text-slate-500 leading-relaxed">${msg}</p>`;
+                document.getElementById('fc-back-past').innerHTML = '—';
+                document.getElementById('fc-back-present').innerHTML = '—';
+                document.getElementById('fc-back-masdar').innerHTML = '—';
+                document.getElementById('fc-back-th').innerText = '—';
+                return;
+            }
+
+            if (fcIndex >= fcPool.length) fcIndex = fcPool.length - 1;
+            const idx = fcPool[fcIndex];
+            const item = vocabularyDatabase[idx];
+            const field = resolveFront(fcIndex);
+            document.getElementById('flashcard-index').innerText = `ใบที่ ${fcIndex + 1} / ${fcPool.length}`;
+            if (statusEl) statusEl.innerHTML = _statusBadge(idx);
+            frontBox.innerHTML = _frontHTML(idx, field);
+
+            document.getElementById('fc-back-past').innerHTML = renderArabic(item.past, rootOf(idx));
+            document.getElementById('fc-back-present').innerHTML = renderArabic(item.present, rootOf(idx), true);
+            document.getElementById('fc-back-masdar').innerHTML = renderArabic(item.masdar, rootOf(idx));
+            document.getElementById('fc-back-th').innerText = item.th;
+            lucide.createIcons();
+        }
+
+        function flipFlashcard() {
+            if (!fcPool.length) return;
+            const inner = document.getElementById('flashcard-inner');
+            inner.classList.toggle('card-flipped');
+            const flipped = inner.classList.contains('card-flipped');
+            const gr = document.getElementById('fc-grade-row');
+            gr.classList.toggle('hidden', !flipped);
+            gr.classList.toggle('flex', flipped);
+        }
+
+        function gradeFlashcard(grade) {
+            if (!fcPool.length) return;
+            const idx = fcPool[fcIndex];
+            gradeSrs(idx, grade);
+            if (fcMode === 'srs') {
+                fcPool.splice(fcIndex, 1);              // เอาใบนี้ออกจากคิวรอบนี้
+                if (grade === 'again') fcPool.push(idx); // ถ้ายังไม่ได้ → กลับมาท้ายคิว
+                fcFrontPerCard = {};
+                if (fcIndex >= fcPool.length) fcIndex = 0;
+            } else {
+                if (fcIndex < fcPool.length - 1) fcIndex++;
+            }
+            updateFcScopeUI();
+            showFlashcard();
+        }
+
+        function prevFlashcard() { if (fcIndex > 0) { fcIndex--; showFlashcard(); } }
+        function nextFlashcard() { if (fcIndex < fcPool.length - 1) { fcIndex++; showFlashcard(); } }
+        function shuffleFlashcards() { refreshFlashcardPool(true); }
+        function speakActiveFlashcard() { const it = vocabularyDatabase[fcPool[fcIndex]]; if (it) speakArabicForms([it.past, it.present, it.masdar]); }
+
+        // ---------- ขอบเขตของแฟลชการ์ด (ใช้ selectedSet ร่วมกับแท็บตารางศัพท์) ----------
+        function renderFcMonthBar() {
+            const bar = document.getElementById('fc-month-bar');
+            if (!bar) return;
+            let html = '';
+            for (let m = 1; m <= MONTH_COUNT; m++) {
+                const idxs = monthIndices(m);
+                const sel = idxs.filter(i => selectedSet.has(i)).length;
+                const full = sel === idxs.length;
+                html += `<button class="mchip ${full ? 'on' : ''}" onclick="fcToggleMonth(${m})">เดือน ${m}<span class="mc-sub">${sel}/${idxs.length}</span></button>`;
+            }
+            bar.innerHTML = html;
+        }
+        function fcToggleMonth(m) {
+            const idxs = monthIndices(m);
+            const full = idxs.every(i => selectedSet.has(i));
+            idxs.forEach(i => full ? selectedSet.delete(i) : selectedSet.add(i));
+            saveSel(); syncSelectionEverywhere(); refreshFlashcardPool(false);
+        }
+        function fcQuickScope(kind) {
+            const all = vocabularyDatabase.map((_, i) => i);
+            if (kind === 'nextmonth') {
+                for (let m = 1; m <= MONTH_COUNT; m++) {
+                    const idxs = monthIndices(m);
+                    if (!idxs.every(i => selectedSet.has(i))) { idxs.forEach(i => selectedSet.add(i)); break; }
+                }
+            } else if (kind === 'due')  { selectedSet = new Set(all.filter(i => isDue(i) || isNew(i))); }
+            else if (kind === 'weak')   { selectedSet = new Set(all.filter(isWeak)); }
+            else if (kind === 'all')    { selectedSet = new Set(all); }
+            else if (kind === 'none')   { selectedSet = new Set(); }
+            saveSel(); syncSelectionEverywhere();
+            if (kind === 'due')  fcMode = 'srs';
+            if (kind === 'weak') fcMode = 'weak';
+            document.querySelectorAll('#fc-mode-seg button').forEach(b => b.classList.toggle('active', b.dataset.fm === fcMode));
+            refreshFlashcardPool(false);
+        }
+        function updateFcScopeUI() {
+            renderFcMonthBar();
+            const dueN = vocabularyDatabase.reduce((a, _, i) => a + (isDue(i) ? 1 : 0), 0);
+            const weakN = vocabularyDatabase.reduce((a, _, i) => a + (isWeak(i) ? 1 : 0), 0);
+            const set = (id, v) => { const e = document.getElementById(id); if (e) e.innerText = v; };
+            set('fc-due-count', dueN); set('fc-weak-count', weakN);
+            set('fc-scope-badge', `เลือกฝึก ${selectedSet.size} คำ`);
+            const modeTxt = { srs: 'ทบทวนตามกำหนด', weak: 'เจาะจุดอ่อน', all: 'ทั้งหมด', random: 'สุ่มลำดับ' }[fcMode];
+            set('fc-queue-info', `โหมด: ${modeTxt} • ในคิวรอบนี้ ${fcPool.length} คำ`);
+            lucide.createIcons();
+        }
+        // อัปเดตทุกหน้าที่อ้างถึง selectedSet ให้ตรงกัน
+        function syncSelectionEverywhere() {
+            if (typeof updateSelectionUI === 'function') updateSelectionUI();
+            if (typeof populateTable === 'function' && document.getElementById('page-learn') && !document.getElementById('page-learn').classList.contains('hidden')) populateTable();
+        }
+
+        // ==================== TAB 3: ORAL EXAM LOGIC ====================
+        let examList = [];
+        let examIdx = 0;
+        let poolMaxCount = 50;
+        let currentActiveItem = null;
+        let examCardFlipped = false;
+        let passedArray = [], failedArray = [], fullSessionGrades = [];
+
+        // mode: 'selected' = คำที่เลือก, 'all' = ทั้ง 50, 'retry' = เฉพาะที่เพิ่งสอบผิด
+        function startExam(mode = 'selected') {
+            let pool;
+            if (mode === 'retry') {
+                pool = [...failedArray];
+            } else if (mode === 'all') {
+                pool = [...vocabularyDatabase];
+            } else {
+                pool = getSelectedItems();
+            }
+            if (pool.length === 0) {
+                const msg = mode === 'selected'
+                    ? 'ยังไม่ได้เลือกคำสำหรับสอบ — ไปติ๊กเลือกคำที่แท็บ “ตารางศัพท์” ก่อน หรือกด “สอบทั้งหมด 500 คำ”'
+                    : 'ยังไม่มีคำในรายการนี้';
+                alert(msg);
+                return;
+            }
+            examList = pool.sort(() => Math.random() - 0.5);
+            poolMaxCount = examList.length;
+            examIdx = 0; passedArray = []; failedArray = []; fullSessionGrades = []; examCardFlipped = false;
+            document.getElementById('exam-report-card').classList.add('hidden');
+            document.getElementById('exam-card-area').classList.remove('hidden');
+            loadExamCard();
+        }
+
+        // ใช้ตอนกดแท็บ "ห้องสอบ": ถ้าเลือกคำไว้ก็สอบเฉพาะที่เลือก ไม่งั้นสอบทั้งหมด
+        function startExamSmart() {
+            startExam(selectedSet.size > 0 ? 'selected' : 'all');
+        }
+
+        function loadExamCard() {
+            if (examIdx >= examList.length) { showExamEndSummary(); return; }
+            currentActiveItem = examList[examIdx];
+            examCardFlipped = false;
+            document.getElementById('exam-flip-container').classList.remove('card-flipped');
+
+            document.getElementById('current-card-num').innerText = examIdx + 1;
+            document.getElementById('exam-progress-text').innerText = `วิเคราะห์การท่องปากเปล่าใบที่ ${examIdx + 1} จากทั้งหมด ${poolMaxCount} ใบ`;
+            document.getElementById('progress-bar-fill').style.width = `${((examIdx + 1) / poolMaxCount) * 100}%`;
+
+            document.getElementById('stat-completed-cards').innerText = `${examIdx} / ${poolMaxCount}`;
+            document.getElementById('stat-correct-count').innerText = passedArray.length;
+            document.getElementById('stat-wrong-count').innerText = `${failedArray.length} คำ`;
+
+            const modes = ['th', 'past', 'present', 'masdar'];
+            const randomMode = modes[Math.floor(Math.random() * modes.length)];
+            currentClueMode = randomMode;
+            renderExamFaces();
+        }
+
+        let currentClueMode = 'th';
+        // วาดหน้าโจทย์ + หน้าเฉลยของการ์ดสอบใบปัจจุบัน (ใช้ซ้ำตอนเปลี่ยนสี ไม่ข้ามข้อ)
+        function renderExamFaces() {
+            if (!currentActiveItem) return;
+            const badge = document.getElementById('exam-clue-badge');
+            const boxWord = document.getElementById('exam-clue-display-word');
+            const idx = vocabularyDatabase.indexOf(currentActiveItem);
+            const m = currentClueMode;
+            if (m === 'th') {
+                badge.innerText = "ความหมายภาษาไทย";
+                boxWord.innerHTML = `<h3 class="text-3xl font-black text-slate-800">${currentActiveItem.th}</h3>`;
+            } else if (m === 'past') {
+                badge.innerText = "🔴 กริยาอดีต / รูปรากศัพท์";
+                boxWord.innerHTML = `<h3 class="font-arabic text-5xl ar-word">${renderArabic(currentActiveItem.past, rootOf(idx))}</h3>`;
+            } else if (m === 'present') {
+                badge.innerText = "กริยาปัจจุบัน";
+                boxWord.innerHTML = `<h3 class="font-arabic text-5xl ar-word">${renderArabic(currentActiveItem.present, rootOf(idx), true)}</h3>`;
+            } else if (m === 'masdar') {
+                badge.innerText = "อาการนาม (مَصْدَر)";
+                boxWord.innerHTML = `<h3 class="font-arabic text-5xl ar-word">${renderArabic(currentActiveItem.masdar, rootOf(idx))}</h3>`;
+            }
+            document.getElementById('back-display-th').innerText = currentActiveItem.th;
+            document.getElementById('back-display-past').innerHTML = renderArabic(currentActiveItem.past, rootOf(idx));
+            document.getElementById('back-display-present').innerHTML = renderArabic(currentActiveItem.present, rootOf(idx), true);
+            document.getElementById('back-display-masdar').innerHTML = renderArabic(currentActiveItem.masdar, rootOf(idx));
+        }
+        // เรียกตอนเปลี่ยนการตั้งค่าสี — รีเฟรชสีการ์ดสอบถ้ากำลังสอบอยู่
+        function rerenderExamCard() {
+            if (currentActiveItem && document.getElementById('page-exam') && !document.getElementById('page-exam').classList.contains('hidden')) {
+                renderExamFaces();
+            }
+        }
+
+        function flipExamCard() {
+            if (examCardFlipped) return;
+            examCardFlipped = true;
+            document.getElementById('exam-flip-container').classList.add('card-flipped');
+            speakArabicForms([currentActiveItem.past, currentActiveItem.present, currentActiveItem.masdar]);
+        }
+
+        function speakExamArabicWord() { speakArabicForms([currentActiveItem.past, currentActiveItem.present, currentActiveItem.masdar]); }
+
+        function gradeOralCard(isPass) {
+            if (!examCardFlipped) return;
+            const dbIdx = vocabularyDatabase.indexOf(currentActiveItem);
+            if (isPass) {
+                passedArray.push(currentActiveItem);
+                if (dbIdx >= 0) { gradeSrs(dbIdx, 'good'); }   // ป้อนผลเข้าระบบ SRS ด้วย
+            } else {
+                failedArray.push(currentActiveItem);
+                if (dbIdx >= 0) { gradeSrs(dbIdx, 'again'); }
+            }
+            saveSel(); updateSelectionUI();
+            fullSessionGrades.push({ item: currentActiveItem, isPass: isPass });
+            examIdx++;
+            setTimeout(loadExamCard, 100);
+        }
+
+        function skipCard() {
+            const dbIdx = vocabularyDatabase.indexOf(currentActiveItem);
+            if (dbIdx >= 0) { gradeSrs(dbIdx, 'again'); }
+            saveSel(); updateSelectionUI();
+            failedArray.push(currentActiveItem);
+            fullSessionGrades.push({ item: currentActiveItem, isPass: false });
+            examIdx++;
+            loadExamCard();
+        }
+
+        function showExamEndSummary() {
+            document.getElementById('exam-card-area').classList.add('hidden');
+            document.getElementById('exam-report-card').classList.remove('hidden');
+
+            document.getElementById('report-correct-count').innerText = `${passedArray.length} คำ`;
+            document.getElementById('report-wrong-count').innerText = `${failedWordsCount = failedArray.length} คำ`;
+
+            document.getElementById('btn-retest-failures').disabled = failedArray.length === 0;
+
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = '';
+            fullSessionGrades.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold">${r.item.th}</td>
+                    <td class="p-3 font-arabic text-right text-2xl">${r.item.past}</td>
+                    <td class="p-3 font-arabic text-right text-xl">${r.item.present}</td>
+                    <td class="p-3 font-arabic text-right text-xl">${r.item.masdar}</td>
+                    <td class="p-3 text-center">
+                        ${r.isPass ? 
+                            '<span class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px]">ผ่าน 🟢</span>' : 
+                            '<span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full text-[10px]">ซ่อม 🔴</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // Spacebar quick shortcut listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !document.getElementById('page-exam').classList.contains('hidden')) {
+                e.preventDefault();
+                if (!examCardFlipped) flipExamCard();
+            }
+        });
+    </script>
+</body>
+</html>
