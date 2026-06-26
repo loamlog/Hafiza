@@ -42,6 +42,12 @@
         .hk-suk { color: #64748b; }   /* สุกูน    ـْ  เทา */
         .hk-shd { color: #9333ea; }   /* ชัดดะฮ์  ـّ  ม่วง */
         .hk-tan { color: #db2777; }   /* ตันวีน  ـً ـٌ ـٍ  ชมพู */
+        /* เครื่องหมายสระเป็นขีดเล็ก ๆ — ทำให้หนาขึ้นจะเห็นสีชัด โดยเฉพาะตอนปิดสีราก */
+        .hk-fat,.hk-kas,.hk-dam,.hk-suk,.hk-shd,.hk-tan { font-weight: 800; }
+        .vowel-emphasis .hk-fat,.vowel-emphasis .hk-kas,.vowel-emphasis .hk-dam,
+        .vowel-emphasis .hk-suk,.vowel-emphasis .hk-shd,.vowel-emphasis .hk-tan {
+            font-weight: 900; -webkit-text-stroke: 0.4px currentColor;
+        }
 
         /* legend chip */
         .legend-chip { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; }
@@ -1435,6 +1441,9 @@
             if (grp) grp.style.cssText = bwMode ? 'opacity:.4;pointer-events:none;transition:.2s' : 'transition:.2s';
             const fab = document.getElementById('color-fab');
             if (fab) fab.classList.toggle('is-bw', bwMode || VOWEL_KEYS.every(k=>!colorPrefs[k]) && !colorPrefs.root);
+            // เน้นเครื่องหมายสระเป็นพิเศษเมื่อปิดสีราก (โหมด “เฉพาะสระ”) เพื่อให้เห็นชัด
+            const emphasize = !bwMode && !colorPrefs.root && VOWEL_KEYS.some(k => colorPrefs[k]);
+            if (document.body) document.body.classList.toggle('vowel-emphasis', emphasize);
             refreshLegends();
         }
 
